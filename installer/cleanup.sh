@@ -4,8 +4,6 @@ echo "Hit enter to nuke everything."
 
 read line
 
-rm -f /etc/my.cnf
-rm -rf /etc/mysql
 rm -rf /data
 rm -rf /etc/nginx
 rm -f /etc/nginx/conf.d/webgui8.conf
@@ -16,5 +14,8 @@ rm -rf /tmp/WebGUICache
 killall starman
 # mysql --user=root --password=Nyklm6 -e 'drop database www_example_com;'
 rm -rf /var/lib/mysql
-apt-get remove akonadi-backend-mysql  libdbd-mysql-perl libmysqlclient18:amd64 mysql-client-5.5 mysql-common mysql-server-core-5.5
+apt-get remove akonadi-backend-mysql  libdbd-mysql-perl libmysqlclient18:amd64 mysql-client-5.5 mysql-common mysql-server-core-5.5 mysql-server-5.5
+rm -f /etc/my.cnf  # after uninstalling mysql
+rm -rf /etc/mysql
+rm -rf /var/lib/mysql
 userdel webgui
