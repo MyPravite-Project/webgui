@@ -17,7 +17,12 @@ WebGUI is a mature, feature rich Content Management System.  It's written in Per
 
 ## Installation
 
-On Mac OSX, Debian, and CentOS (CentOS support currently broken), the interactive installer script is recommended:
+On Mac OSX, Debian, and CentOS (CentOS support currently broken), the interactive installer script is recommended.
+
+    wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl
+    perl webgui_installer.pl
+
+Or from an existing git checkout of WebGUI, do:
 
     cd installer
     perl webgui_installer.pl
@@ -27,7 +32,7 @@ Then answer the questions about site URL, installation directory, what MySQL pas
 If the installer encounters any errors, it will offer to automatically send a problem report.  Please allow it to
 do so if this happens.
 The problem report contains several autodetected values (such as operating system and machine architecture) as well as the text
-of the fatal error message.  No user identifying information or passwords are sent.
+of the fatal error message.  No user identifying information is sent.  Passwords may be sent if the failed command includes a password.
 
 After the installer completes, a `webgui.sh` file will be left in the install directory you picked, along with the
 `WebGUI` directory containing the install.
