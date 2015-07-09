@@ -73,6 +73,13 @@ A WebGUI::FormBuilder::Tab object to append the form fields to.
 sub configurationForm {
 	my $self = shift;
     my $tab  = shift;
+    my $session = $self->session; 
+
+    # keep these fields from being added to the form multiple times
+    # each of the graphing plugins has a configurationForm() method that get called, and then 
+    # calls SUPER::configurationForm(), which is us
+
+    return if $tab->getField('graph_imageWidth');
 
 	my $i18n = WebGUI::International->new($self->session, 'Image_Graph');
 	
