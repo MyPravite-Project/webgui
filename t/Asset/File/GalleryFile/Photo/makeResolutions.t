@@ -17,7 +17,6 @@ use WebGUI::Test;
 use WebGUI::Session;
 use Test::More; 
 use Test::Deep;
-use Image::Magick;
 use WebGUI::Asset::File::GalleryFile::Photo;
 
 #----------------------------------------------------------------------------

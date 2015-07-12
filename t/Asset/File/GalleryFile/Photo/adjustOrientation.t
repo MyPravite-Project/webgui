@@ -19,7 +19,6 @@ use WebGUI::Test;
 use WebGUI::Session;
 use WebGUI::Asset::File::GalleryFile::Photo;
 
-use Image::Magick;
 use Test::More; 
 use Test::Deep;
 
@@ -82,24 +81,31 @@ my $storage = $photo->getStorageLocation;
 cmp_deeply( [ $storage->getSizeInPixels($photo->get('filename')) ], [2, 3], "Check if image with orientation 1 was left as is (based on dimensions)" );
 
 # Check single pixel
-my $image = new Image::Magick;
-$image->Read( $storage->getPath( $photo->get('filename') ) );
-cmp_deeply( [ $image->GetPixel( x=>1, y=>1 ) ], [ 1, 1, 1], "Check if image with orientation 1 was left as is (based on pixel values)");
+my $image = Imager->new;
+$image->read(file => $storage->getPath( $photo->get('filename') )) or die Imager->errstr();
+cmp_bag([ $image->getpixel(x=>1, y=>1)->rgba() ], [255,255,255,ignore()], 'Check if image with orientation 1 was left as is (based on pixel values)');
+
 
 #----------------------------------------------------------------------------
 # Test adjustment of image with orientation set to 3
 
 # Attach new image to Photo asset
 $photo->setFile( WebGUI::Test->getTestCollateralPath('orientation_3.jpg') );
-my $storage = $photo->getStorageLocation;
+$storage = $photo->getStorageLocation;
+
+# uncomment to view before/after images
+# system 'xv',  WebGUI::Test->getTestCollateralPath('orientation_3.jpg'); # XXX
+# system 'xv', $storage->getPath( $photo->get('filename') );  # XXX
 
 # Check dimensions
 cmp_deeply( [ $storage->getSizeInPixels($photo->get('filename')) ], [2, 3], "Check if image with orientation 3 was rotated by 180° (based on dimensions)" );
 
 # Check single pixel
-$image->Read( $storage->getPath( $photo->get('filename') ) );
-cmp_deeply( [ $image->GetPixel( x=>2, y=>3 ) ], [ 1, 1, 1], "Check if image with orientation 3 was rotated by 180° (based on pixels)");
-
+$image->read( file => $storage->getPath( $photo->get('filename') ) ) or die Imager->errstr();
+ok my @pixel =  $image->getpixel( x=>1, y=>2 )->rgba(), "read bottom right pixel";
+ok $pixel[0] < 50 && $pixel[1] < 50 && $pixel[2] < 50, "Check if image with orientation 3 was rotated by 180° (based on pixels)"; # jpeg recompression smears the image, but the bottom right corner should now be dark
+ok @pixel =  $image->getpixel( x=>0, y=>0 )->rgba(), "read top left pixel";
+ok $pixel[0] > 200  && $pixel[1] > 200 && $pixel[2] > 200, "Check if image with orientation 3 was rotated by 180°, part II (based on pixels)"; # jpeg recompression smears the image, but the top left pixel should now be light
 
 #----------------------------------------------------------------------------
 # Test adjustment of image with orientation set to 6
@@ -112,8 +118,12 @@ my $storage = $photo->getStorageLocation;
 cmp_deeply( [ $storage->getSizeInPixels($photo->get('filename')) ], [3, 2], "Check if image with orientation 6 was rotated by 90° CW (based on dimensions)" );
 
 # Check single pixel
-$image->Read( $storage->getPath( $photo->get('filename') ) );
-cmp_deeply( [ $image->GetPixel( x=>3, y=>1 ) ], [ 1, 1, 1], "Check if image with orientation 6 was rotated by 90° CW (based on pixels)");
+$image->read( file => $storage->getPath( $photo->get('filename') ) ) or die Imager->errstr();
+
+ok my @pixel =  $image->getpixel( x=>2, y=>0 )->rgba(), "read top right pixel";
+ok $pixel[0] < 50 && $pixel[1] < 50 && $pixel[2] < 50, "Check if image with orientation 6 was rotated by 90° CW (based on pixels)"; # jpeg recompression smears the image, but the top right corner should now be dark
+ok @pixel =  $image->getpixel( x=>0, y=>0 )->rgba(), "read top left pixel";
+ok $pixel[0] > 200  && $pixel[1] > 200 && $pixel[2] > 200, "Check if image with orientation 6 was rotated by 90° CW, part II (based on pixels)"; # jpeg recompression smears the image, but the top left pixel should now be light
 
 
 #----------------------------------------------------------------------------
@@ -121,11 +131,16 @@ cmp_deeply( [ $image->GetPixel( x=>3, y=>1 ) ], [ 1, 1, 1], "Check if image with
 
 # Attach new image to Photo asset
 $photo->setFile( WebGUI::Test->getTestCollateralPath('orientation_8.jpg') );
-my $storage = $photo->getStorageLocation;
+$storage = $photo->getStorageLocation;
 
 # Check dimensions
 cmp_deeply( [ $storage->getSizeInPixels($photo->get('filename')) ], [3, 2], "Check if image with orientation 8 was rotated by 90° CCW (based on dimensions)" );
 
 # Check single pixel
-$image->Read( $storage->getPath( $photo->get('filename') ) );
-cmp_deeply( [ $image->GetPixel( x=>1, y=>2 ) ], [ 1, 1, 1], "Check if image with orientation 8 was rotated by 90° CCW (based on pixels)");
+$image->read( file => $storage->getPath( $photo->get('filename') ) );
+
+ok my @pixel =  $image->getpixel( x=>0, y=>1 )->rgba(), "read bottom left pixel";
+ok $pixel[0] < 50 && $pixel[1] < 50 && $pixel[2] < 50, "Check if image with orientation 8 was rotated by 90° CCW (based on pixels)"; # the bottom left corner should now be dark
+ok @pixel =  $image->getpixel( x=>0, y=>0 )->rgba(), "read top left pixel";
+ok $pixel[0] > 200  && $pixel[1] > 200 && $pixel[2] > 200, "Check if image with orientation 8 was rotated by 90° CCW, part II (based on pixels)"; # the top left pixel should now be light
+

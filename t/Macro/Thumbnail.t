@@ -15,10 +15,10 @@ use WebGUI::Macro::Thumbnail;
 use WebGUI::Session;
 use WebGUI::Image;
 use WebGUI::Storage;
-use Image::Magick;
+use Imager;
 use Test::More; # increment this value for each test you create
 use Test::Deep;
-plan tests => 8;
+plan tests => 7;
 
 my $session = WebGUI::Test->session;
 
@@ -80,12 +80,10 @@ SKIP: {
     skip "File does not exist", 3 unless $fileExists;
 
     ##Load the image into some parser and check a few pixels to see if they're blue-ish.
-    ##->Get('pixel[x,y]') hopefully returns color in hex triplets
-    my $thumbImg = Image::Magick->new();
-    $thumbImg->ReadImage($thumbFile);
 
-    cmp_bag([$thumbImg->GetPixels(width=>1, height=>1, x=>25, y=>25, map=>'RGB', normalize=>'true')], [0,0,1], 'blue pixel #1');
-    cmp_bag([$thumbImg->GetPixels(width=>1, height=>1, x=>75, y=>75, map=>'RGB', normalize=>'true')], [0,0,1], 'blue pixel #2');
-    cmp_bag([$thumbImg->GetPixels(width=>1, height=>1, x=>50, y=>50, map=>'RGB', normalize=>'true')], [0,0,1], 'blue pixel #3');
+    my $image = Imager->new;
+    $image->read(file => $thumbFile) or die Imager->errstr();
+    cmp_bag([ $image->getpixel(x=>25, y=>25)->rgba() ], [0,0,255,ignore()], 'blue pixel #1');   # this is returning garbage for the alpha channel even though the png doesn't have an alpha channel
+    cmp_bag([ $image->getpixel(x=>49, y=>49)->rgba() ], [0,0,255,ignore()], 'blue pixel #2');
 
 }
