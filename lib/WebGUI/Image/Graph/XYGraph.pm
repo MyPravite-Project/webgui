@@ -48,6 +48,11 @@ sub configurationForm {
 
 	$self->SUPER::configurationForm($tab);
 
+    # don't add these fields twice.  that can otherwise happen when/if 
+    # when multiple subclasses calls SUPER::configurationForm.
+
+    return if $tab->getField('xyGraph_chartWidth');
+
 	$tab->addField('integer',
 		name	=> 'xyGraph_chartWidth',
 		value	=> $self->getChartWidth,
@@ -145,15 +150,13 @@ sub drawAxis {
 	my $self = shift;
 
 	my $chartOffset = $self->getChartOffset;
-	$self->image->Draw(
-		primitive	=> 'Path',
-		stroke		=> $self->getAxisColor,
-		points		=> 
-			" M ".$chartOffset->{x}.",".$chartOffset->{y}.
-			" L ".$chartOffset->{x}.",".($self->getChartHeight + $chartOffset->{y}).
-			" L ".($self->getChartWidth + $chartOffset->{x}).",".($self->getChartHeight + $chartOffset->{y}),
-        fill        => 'none',
-	);
+
+    $self->image->polyline(
+        color => Imager::Color->new( $self->getAxisColor ),  
+        x => [ $chartOffset->{x}, $chartOffset->{x}, $chartOffset->{x} + $self->getChartWidth, ],
+        y => [ $chartOffset->{y}, $self->getChartHeight + $chartOffset->{y}, $self->getChartHeight + $chartOffset->{y}, ],
+    );
+
 }
 
 #-------------------------------------------------------------------
@@ -175,7 +178,7 @@ sub drawLabels {
 		$self->drawLabel($text, (
 			alignVertical	=> 'top',
 			align		=> 'left',
-            rotate      => 90,
+            # rotate      => 90, # no longer an option with Imager
 			x		=> $anchorPoint{x},
 			y		=> $anchorPoint{y},
 		));
@@ -213,14 +216,17 @@ sub drawRulers {
 	my $dist = $self->getLabelOffset;
 
 	for (1 .. $self->getYRange / $self->getYGranularity) {
-		$self->image->Draw(
-			primitive	=> 'Path',
-			stroke		=> $self->getRulerColor,
-			points		=>
-				" M ".$chartOffset->{x}.",".($chartOffset->{y}+$self->getChartHeight - $self->getPixelsPerUnit * $_*$self->getYGranularity).
-				" L ".($chartOffset->{x}+$self->getChartWidth).",".($chartOffset->{y}+$self->getChartHeight - $self->getPixelsPerUnit * $_*$self->getYGranularity)
-		);
+
+        $self->image->polyline(
+            points => [ 
+                [ $chartOffset->{x}, ($chartOffset->{y}+$self->getChartHeight - $self->getPixelsPerUnit * $_*$self->getYGranularity) ],
+                [ ($chartOffset->{x}+$self->getChartWidth), ($chartOffset->{y}+$self->getChartHeight - $self->getPixelsPerUnit * $_*$self->getYGranularity) ],
+            ],
+            color  => Imager::Color->new( $self->getRulerColor ), 
+        );
+
 	}
+
 }
 
 #-------------------------------------------------------------------

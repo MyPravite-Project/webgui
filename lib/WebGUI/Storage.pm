@@ -860,7 +860,10 @@ sub generateThumbnail {
 		return 0;
 	}
     my $image = Imager->new;
-    $image->read( file => $self->getPath($filename) );
+    $image->read( file => $self->getPath($filename) ) or do {
+        $self->session->log->error( "Couldn't read image for thumbnail creation: " . $self->getPath($filename) );
+        return 0;
+    };
     my ($x, $y) = ($image->getwidth, $image->getheight);
     my $n = $thumbnailSize;
     if ($x > $n || $y > $n) {
@@ -1234,7 +1237,10 @@ sub getSizeInPixels {
 		return 0;
 	}
     my $image = Imager->new;
-    $image->read(file => $self->getPath($filename));
+    $image->read(file => $self->getPath($filename)) or do {
+        $self->session->log->error("Couldn't read image to check the size of it.");
+        return 0;
+    };
     return ($image->getwidth, $image->getheight);
 }
 
@@ -1403,8 +1409,7 @@ sub crop {
         return 0;
     }
     my $image = Imager->new;
-    $image->read($self->getPath($filename))
-        or die $image->errstr;
+    $image->read( file=> $self->getPath($filename) ) or die $image->errstr;
 
     # Next, resize dimensions
     if ( $width || $height || $x || $y ) {
@@ -1414,8 +1419,7 @@ sub crop {
     }
 
     # Write our changes to disk
-    $image->write($self->getPath($filename))
-        or die $image->errstr;
+    $image->write( file => $self->getPath($filename) ) or die $image->errstr;
 
     return 1;
 }

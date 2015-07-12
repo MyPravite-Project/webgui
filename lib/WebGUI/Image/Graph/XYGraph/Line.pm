@@ -17,10 +17,7 @@ Package for creating line graphs.
 
 =head1 SYNOPSIS
 
-This package privides the logic for drawing 2d line graphs, 3d lines are in the
-pipeline but not yet ready for prime time. 
-
-The possibilities are quite limited for now but will be enhanced upon in the future.
+This package privides the logic for drawing 2d line graphs.
 
 =head1 METHODS
 
@@ -40,7 +37,7 @@ sub drawGraph {
 	my ($currentBar, %location);
 	my $self = shift;
 
-	$self->processDataSet;
+	$self->processDataSet;  # builds $self->{_lines} from $self->{_datasets}
 
 	my $numberOfGroups = List::Util::max(map {scalar @$_} @{$self->{_datasets}});
 	my $interval = $self->getChartWidth / ($numberOfGroups - 1);
@@ -86,21 +83,23 @@ sub drawLine {
 	my %currentLocation = %$location;
 
 
-	my $dataCounter;
-	my $path;# = " M ".$currentLocation{x}.",".$currentLocation{y};
+    my @points;
 	foreach (@{$line->{dataset}}) {
-		$path .= ($dataCounter++) ? " L " : " M ";
-		$path .= $currentLocation{x}.",".($currentLocation{y} - $_*$self->getPixelsPerUnit);
+
+		# $path .= ($dataCounter++) ? " L " : " M ";
+		# $path .= $currentLocation{x}.",".($currentLocation{y} - $_*$self->getPixelsPerUnit);
+
+        push @points, [ $currentLocation{x}, ($currentLocation{y} - $_*$self->getPixelsPerUnit) ];
 
 		$currentLocation{x} += $interval;
+
 	}
 
-	$self->image->Draw(
-		primitive	=> 'Path',
-		stroke		=> $line->{strokeColor},
-		points		=> $path,
-		fill		=> 'none',
-	);
+    $self->image->polyline(
+        points => \@points,
+        color  => $line->{strokeColor},
+    );
+
 }
 
 #-------------------------------------------------------------------
@@ -122,7 +121,7 @@ sub formNamespace {
 
 =head2 getAnchorSpacing
 
-Returns the distance in pixels between two anchors on the x axis that define teh
+Returns the distance in pixels between two anchors on the x axis that define the
 placement of bars and labels.
 
 =cut

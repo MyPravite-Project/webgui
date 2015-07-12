@@ -96,16 +96,7 @@ sub drawBar {
 
 	my $barHeight = $bar->{height} * $self->getPixelsPerUnit;
 
-	$self->image->Draw(
-		primitive	=> 'Path',
-		stroke		=> $bar->{strokeColor},
-		points		=> 
-			" M ".$location->{x}.",".$location->{y}.
-			" L ".$location->{x}.",".($location->{y}-$barHeight).
-			" L ".($location->{x}+$barWidth).",".($location->{y}-$barHeight).
-			" L ".($location->{x}+$barWidth).",".$location->{y},
-		fill		=> $bar->{fillColor},
-	);
+    $self->image->box( color => $bar->{fillColor}, xmin => $location->{x}, ymin => $location->{y}-$barHeight, xmax => $location->{x}+$barWidth, ymax => $location->{y}, filled => 1 );
 }
 
 #-------------------------------------------------------------------
@@ -231,27 +222,6 @@ sub formNamespace {
 	return $self->SUPER::formNamespace.'_Bar';
 }
 
-#-------------------------------------------------------------------
-
-=head2 getAnchorSpacing
-
-Returns the distance in pixels between two anchors on the x axis that define teh
-placement of bars and labels.
-
-=cut
-
-sub getAnchorSpacing {
-	my $self = shift;
-
-	my $numberOfGroups = List::Util::max(map {scalar @$_} @{$self->getDataset});
-
-	my $spacing = sprintf('%.0f', ($self->getChartWidth - ($numberOfGroups-1) * $self->getGroupSpacing) / $numberOfGroups + $self->getGroupSpacing);
-
-	return {
-		x	=> $spacing,
-		y	=> 0,
-	};
-}
 
 #-------------------------------------------------------------------
 
@@ -314,11 +284,32 @@ sub getFirstAnchorLocation {
 	my $self = shift;
 
 	return {
-		x	=> sprintf('%.0f', $self->getChartOffset->{x} + ($self->getAnchorSpacing->{x} - $self->getGroupSpacing) / 2),
-		y	=> $self->getChartOffset->{y} + $self->getChartHeight
+        x	=> $self->getChartOffset->{x},  # can't easily rotate text 90 degrees in Imager, so this is flush rather than centered on the bar now
+        y	=> $self->getChartOffset->{y} + $self->getChartHeight,
 	}
 }
 
+#-------------------------------------------------------------------
+
+=head2 getAnchorSpacing
+
+Returns the distance in pixels between two anchors on the x axis that define teh
+placement of bars and labels.
+
+=cut
+
+sub getAnchorSpacing {
+	my $self = shift;
+
+	my $numberOfGroups = List::Util::max(map {scalar @$_} @{$self->getDataset});
+
+	my $spacing = sprintf('%.0f', ($self->getChartWidth - ($numberOfGroups-1) * $self->getGroupSpacing) / $numberOfGroups + $self->getGroupSpacing);
+
+	return {
+		x	=> $spacing,
+		y	=> 0,
+	};
+}
 #-------------------------------------------------------------------
 
 =head2 processDataSet
@@ -345,8 +336,8 @@ sub processDataSet {
             }
 			push(@thisSet, {
 				height => $self->{_datasets}->[$currentDataset]->[$currentElement] || 0,
-				fillColor => $color->getFillColor,
-				strokeColor => $color->getStrokeColor,
+				fillColor => Imager::Color->new( $color->getFillColor ),
+				strokeColor => Imager::Color->new( $color->getStrokeColor ),
 			});
 		}
 		push(@{$self->{_bars}}, [ @thisSet ]);

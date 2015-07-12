@@ -142,13 +142,15 @@ sub configurationForm {
 Draws a label with your preferred properties. Defaults the font, font size and
 color which you can override.
 
+This is a wrapper around L<WebGUI::Image::text()> that supplies values from C<getLabelFont>, C<getLabelFontSize>, and C<getLabelColor>.
+
 =head3 label
 
 The text of the label you want to print.
 
 =head3 properties
 
-A hash containing imagemagick Annotate properties.
+A hash containing arguments to L<WebGUI::Image::text()> to pass through.  Overrides defaults.
 
 =cut
 
@@ -156,14 +158,14 @@ sub drawLabel {
 	my $self = shift;
 	my $label = shift;
 	my %properties = @_;
-	
+
 	$self->text(
 		text		=> $label,
 		font		=> $self->getLabelFont->getFile,
-		fill		=> $self->getLabelColor,
+		color       => Imager::Color->new( $self->getLabelColor ),
 		style		=> 'Normal',
 		pointsize	=> $self->getLabelFontSize,
-		%properties,
+		%properties, 
 	);
 }
 
@@ -251,7 +253,9 @@ sub getGraphingTab {
         my $plugin = WebGUI::Image::Graph->load($session, $_);
 		if ($plugin) {
 			push(@graphingPlugins, $plugin);
-			$plugin->setConfiguration($config);
+            if($config) {
+			    $plugin->setConfiguration($config);
+            }
 			$graphingPlugins{$plugin->formNamespace} = $_;
 		} else {
 			push(@failedGraphingPlugins, $_);
@@ -402,10 +406,6 @@ Width and height are referenced by the keys 'width' and 'height' respectively.
 
 The text you want to know the dimensions of.
 
-=head3 properties
-
-Optionally you can pass a hashref containing imagemagick's Annotate properties.
-
 =cut
 
 sub getLabelDimensions {
@@ -413,17 +413,29 @@ sub getLabelDimensions {
 	my $text = shift;
 	my $properties = shift || {};
 	
-	my ($x_ppem, $y_ppem, $ascender, $descender, $width, $height, $max_advance) = $self->image->QueryFontMetrics(
-		font		=> $self->getLabelFont->getFile,
-#		stroke		=> $self->getLabelColor,
-		fill		=> $self->getLabelColor,
-		style		=> 'Normal',
-		pointsize	=> $self->getLabelFontSize,
-		%$properties,
-		text		=> $text,
-	);
+    if( $properties and %$properties ) {
+        $self->session->log->fatal("getLobalDimensions optional parameter's are not backwards compat with ImageMagick");
+    }
 
-	return {width => $width, height => $height};
+    my $font = Imager::Font->new(
+        file  =>  $self->getLabelFont->getFile,
+        index => 0,
+        size  => $self->getLabelFontSize,
+    );
+    my ($neg_width,
+        $global_descent,
+        $pos_width,
+        $global_ascent,
+        $descent,
+        $ascent,
+        $advance_width,
+        $right_bearing
+    ) = $font->bounding_box(string => $text, canon => 1);
+
+    # from the Image::Font documentation for boulding_box():
+    # *   "canon" - if non-zero and the "x", "y" parameters are not supplied, then $pos_width and $global_ascent values will returned as the width and height of the text instead.
+
+	return { width => $pos_width, height => $global_ascent };
 }
 
 #-------------------------------------------------------------------
@@ -542,6 +554,7 @@ sub load {
 	my $plugin = eval { 
         WebGUI::Pluggable::instanciate($namespace, 'new', [$session, ]);
     };
+    $session->log->warn("$namespace failed to load: ``$@''") if $@;
 	return $plugin;
 }
 

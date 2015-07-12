@@ -190,6 +190,7 @@ checkModule('Geo::Coder::Googlev3',         '0.07'       );
 checkModule('IO::File::WithPath',                        );
 checkModule('Plack::Middleware::SizeLimit',              );
 checkModule('Algorithm::Permute',           '0.12'       );
+checkModule('GD::Graph',                    '1.44'       );  # used by WebGUI::Image::Graph::Pie, which is optional
 
 failAndExit("Required modules are missing, running no more checks.") if $missingModule;
 
