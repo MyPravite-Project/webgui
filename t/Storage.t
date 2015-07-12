@@ -17,7 +17,7 @@ use WebGUI::Storage;
 
 use File::Spec;
 use File::Temp qw/tempdir/;
-use Image::Magick;
+use Imager;
 use Test::More;
 use Test::Deep;
 use Test::MockObject;
@@ -669,9 +669,9 @@ $rotateTestStorage->rotate( $file, 90 );
 # Test based on dimensions
 cmp_deeply( [ $rotateTestStorage->getSizeInPixels($file) ], [ 3, 2 ], "rotate: check if image was rotated by 90° CW (based on dimensions)" );
 # Test based on single pixel
-#my $image = new Image::Magick;
-#$image->Read( $rotateTestStorage->getPath( $file ) );
-#is( $image->GetPixel( x=>3, y=>1 ), 1, "rotate: check if image was rotated by 90° CW (based on pixels)");
+my $image = Imager->new;
+$image->read(file => $rotateTestStorage->getPath( $file )) or die Imager->errstr();
+cmp_bag([ $image->getpixel(x=>2, y=>1)->rgba() ], [255,255,255,ignore()], "rotate: check if image was rotated by 90° CW (based on pixels)");
 
 # Rotate image by 90° CCW
 $rotateTestStorage->rotate( $file, -90 );
@@ -679,9 +679,9 @@ $rotateTestStorage->rotate( $file, -90 );
 # Test based on dimensions
 cmp_deeply( [ $rotateTestStorage->getSizeInPixels($file) ], [ 2, 3 ], "rotate: check if image was rotated by 90° CCW (based on dimensions)" );
 # Test based on single pixel
-#my $image = new Image::Magick;
-#$image->Read( $rotateTestStorage->getPath( $file ) );
-#is( $image->GetPixel( x=>1, y=>1 ), 1, "rotate: check if image was rotated by 90° CCW (based on pixels)");
+$image = Imager->new;
+$image->read(file => $rotateTestStorage->getPath( $file )) or die Imager->errstr();
+cmp_bag([ $image->getpixel(x=>1, y=>1)->rgba() ], [255,255,255,ignore()], "rotate: check if image was rotated by 90° CCW (based on pixels)");
 
 ####################################################
 #
