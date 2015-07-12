@@ -32,21 +32,13 @@ use WebGUI::Image::Graph;
 
 my $session         = WebGUI::Test->session;
 
-my $tests = 3
-          ;
-plan tests => 1
-            + $tests;
-
 #----------------------------------------------------------------------------
 # put your tests here
 
 my $class  = 'WebGUI::Asset::Wobject::Poll';
 my $loaded = use_ok($class);
 
-SKIP: {
-
-skip "Unable to load module $class", $tests unless $loaded;
-
+ok $loaded, "Loaded class module $class";
 
 my $defaultNode = WebGUI::Test->asset;
 my $template = $defaultNode->addChild({
@@ -77,10 +69,13 @@ my $poll = $defaultNode->addChild({
 
 isa_ok($poll, 'WebGUI::Asset::Wobject::Poll');
 
-$poll->setVote('daily', 1, '127.0.0.1');
-$poll->setVote('hourly', 1, '127.0.0.1');
-$poll->setVote('never', 1, '127.0.0.1');
-$poll->setVote('never', 1, '127.0.0.1');
+$poll->setVote('a1', 1, '127.0.0.1');
+$poll->setVote('a2', 1, '127.0.0.1');
+$poll->setVote('a3', 1, '127.0.0.1');
+$poll->setVote('a3', 1, '127.0.0.1');
+
+# Bar graph
+# (apparently indicated by graph_formNamespace in the graphConfiguration JSON)
 
 $poll->prepareView();
 my $json = $poll->view();
@@ -96,12 +91,49 @@ cmp_deeply(
     'poll has correct number of responses, a graph and a path to the generated file'
 );
 
-my $graphUrl = Path::Class::File->new($output->{graphUrl});
-my $uploadsPath = Path::Class::Dir->new($session->config->get('uploadsPath'));
-my $uploadsUrl  = Path::Class::Dir->new($session->config->get('uploadsURL'));
-my $graphRelative = $graphUrl->relative($uploadsUrl);
-my $graphFile     = $uploadsPath->file($graphRelative);
+sub getGraphFile {
+    my $graphUrl = shift;
+    my $graphUrl = Path::Class::File->new($graphUrl);
+    my $uploadsPath = Path::Class::Dir->new($session->config->get('uploadsPath'));
+    my $uploadsUrl  = Path::Class::Dir->new($session->config->get('uploadsURL'));
+    my $graphRelative = $graphUrl->relative($uploadsUrl);
+    my $graphFile     = $uploadsPath->file($graphRelative);
+    return $graphFile;
+}
+
+my $graphFile = getGraphFile($output->{graphUrl});
 
 ok(-e $graphFile->stringify, 'graph exists');
 
-}
+diag "XY graph output: " . $graphFile->stringify;
+
+ok(-e $graphFile->stringify, 'graph exists');
+
+# Line graph
+
+$poll->update({ graphConfiguration => <<EOF });
+    {"graph_labelOffset":"10","xyGraph_drawLabels":"1","graph_labelFontId":"defaultFont","graph_labelColor":"#333333","graph_backgroundColor":"#ffffff","xyGraph_yGranularity":"10","graph_formNamespace":"Graph_XYGraph_Line","graph_imageHeight":"300","xyGraph_drawAxis":"1","xyGraph_drawMode":"sideBySide","xyGraph_chartHeight":"200","graph_labelFontSize":"20","graph_paletteId":"defaultPalette","graph_imageWidth":"300","xyGraph_drawRulers":"1","xyGraph_chartWidth":"200"}
+EOF
+
+$poll->prepareView();
+$output = JSON::from_json( $poll->view() );
+$graphFile = getGraphFile($output->{graphUrl});
+ok(-e $graphFile->stringify, 'graph exists');
+diag "Line graph output: " . $graphFile->stringify;
+
+# Pie graph
+
+$poll->update({ graphConfiguration => <<EOF });
+   {"graph_imageWidth":"300","graph_backgroundColor":"#ffffff","pie_labelPosition":"top","pie_stickColor":"#333333","graph_labelOffset":"10","graph_paletteId":"defaultPalette","pie_tiltAngle":"55","graph_labelFontId":"defaultFont","graph_labelColor":"#333333","pie_topHeight":"20","graph_labelFontSize":"20","graph_formNamespace":"Graph_Pie","graph_imageHeight":"300","pie_startAngle":0}
+EOF
+
+$poll->prepareView();
+$output = JSON::from_json( $poll->view() );
+$graphFile = getGraphFile($output->{graphUrl});
+ok(-e $graphFile->stringify, 'graph exists');
+diag "Pie graph output: " . $graphFile->stringify;
+
+
+# done
+
+done_testing;
