@@ -63,8 +63,6 @@ my $extensionTests = [
 	},
 ];
 
-plan tests => 53 + scalar @{ $extensionTests }; # increment this value for each test you create
-
 my $session = WebGUI::Test->session;
 
 my $uploadDir = $session->config->get('uploadsPath');
@@ -115,8 +113,12 @@ foreach my $extTest ( @{ $extensionTests } ) {
 #
 ####################################################
 
-WebGUI::Test->interceptLogging(sub {
-    my $log_data = shift;
+my $log_data;
+WebGUI::Test->interceptLogging2(sub {
+    $log_data = shift;
+    # diag "error: " . $log_data->{error} if $log_data->{error};
+    # diag "warn: " . $log_data->{warn} if $log_data->{warn};
+});
 
 my $thumbStore = WebGUI::Storage->create($session);
 WebGUI::Test->addToCleanup($thumbStore);
@@ -133,6 +135,7 @@ SKIP: {
 	skip "Root will cause this test to fail since it does not obey file permissions", 3
 		if $< == 0;
     ok(! -r $thumbStore->getPath('square.png'), 'Made square.png not readable');
+    delete $log_data->{error}; # clear
     is($thumbStore->generateThumbnail('square.png'), 0,
        'generateThumbnail returns 0 if there are errors reading the file');
     like($log_data->{error}, qr/^Couldn't read image for thumbnail creation: (.+)$/,
@@ -275,8 +278,6 @@ foreach my $testImage (@testImages) {
     );
 }
 
-});
-
 ####################################################
 #
 # rotate
@@ -295,23 +296,40 @@ $rotateTest->rotate($file, 90);
 # Check dimensions
 cmp_bag( [$rotateTest->getSizeInPixels( $file )], [2,3], "Check size of photo after rotating 90° CW" ); 
 # Check pixels
-#my $image = Image::Magick->new;
-#$image->Read( $rotateTest->getPath($file) );
-#is( $image->GetPixel(x=>2, y=>0), 0, "Pixel at location [2,0] should be black" );
+my $image = Imager->new;
+$image->read(file => $rotateTest->getPath($file)) or die Imager->errstr();
+cmp_bag([ $image->getpixel(x=>2, y=>0)->rgba() ], [0,0,0,ignore()], 'Pixel at location [2,0] should be black');   # this is returning garbage for the alpha channel even though the png doesn't have an alpha, and there's no rgb() method 
+
 
 # Rotate test image by 90° CCW
-my $file = $rotateTest->getFiles->[0];
+$file = $rotateTest->getFiles->[0];
 $rotateTest->rotate($file, -90);
 # Check dimensions
 cmp_bag( [$rotateTest->getSizeInPixels( $file )], [3,2], "Check size of photo after rotating 90° CCW" ); 
 # Check pixels
-#$image = Image::Magick->new;
-#$image->Read( $rotateTest->getPath($file) );
-#is( $image->GetPixel(x=>0, y=>0), 0, "Pixel at location [0,0] should be black" );
+$image = Imager->new;
+$image->read(file => $rotateTest->getPath($file)) or die Imager->errstr();
+cmp_bag([ $image->getpixel(x=>0, y=>0)->rgba() ], [0,0,0,ignore()], 'Pixel at location [0,0] should be black');
+
+####################################################
+#
+# scale 
+#
+####################################################
 
 
+# Scale
+my $scaleTest = WebGUI::Storage->create($session);
+WebGUI::Test->addToCleanup($scaleTest);
+$scaleTest->addFileFromFilesystem( WebGUI::Test->getTestCollateralPath('ShawshankRedemptionMoviePoster.jpg') ) or die;
+$file = $scaleTest->getFiles->[0] or die;
+diag "scale file: " . $scaleTest->getPath('ShawshankRedemptionMoviePoster.jpg');  # for visual inspection
+ok eval { $scaleTest->resize('ShawshankRedemptionMoviePoster.jpg', 100, 100) }, "resize call succeeded";
+diag $@ if $@;
+cmp_bag([$scaleTest->getSizeInPixels('ShawshankRedemptionMoviePoster.jpg')],       [100,100], 'getSizeInPixels on scaled file');
+sleep 3;
 
-TODO: {
-	local $TODO = "Methods that need to be tested";
-	ok(0, 'resize');
-}
+
+# done
+
+done_testing;
