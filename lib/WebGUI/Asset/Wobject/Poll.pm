@@ -289,7 +289,7 @@ override getEditForm => sub {
 			hoverHelp	=> $i18n->get('generate graph description'),
 			value		=> $self->generateGraph,
 		);
-        WebGUI::Image::Graph->getGraphingTab($graphTab, $config)
+        WebGUI::Image::Graph->getGraphingTab($graphTab, $config);
 	}
 
 	return $fb;
