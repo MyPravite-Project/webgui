@@ -31,6 +31,24 @@ An experimental Docker image is available on Docker Hub:
 
     https://hub.docker.com/r/scrottie/webgui8/
 
+To install Docker on Debian Linux, add "backports" to your `/etc/apt/sources.list`, following the instructions here at http://backports.debian.org/Instructions/, then run these commands:
+
+    sudo apt-get update
+    sudo apt-get install docker.io
+
+More information for the Debian Docker install is here, https://docs.docker.com/installation/debian/
+
+See https://docs.docker.com/installation/ for Docker installation instructions for other platforms, including Ubuntu, CentOS, MacOSX, Microsoft Windows, and others.
+
+Once Docker is installed, run these commands as root to start WebGUI:
+
+    docker pull scrottie/webgui8
+    docker run -p 80:80 scrottie/webgui8:testing     # adding '-t -i' flags runs it interactively
+
+If not run interactively, `docker ps -l` shows the last Docker container started, `docker log <id>` shows the output (which will be the `plack` process output for WebGUI), and `docker stop <id>` stops it.
+
+See http://docker.com for instructions for Windows and Mac OSX.
+
 Please report problems and suggestions for improvements for that in the Docker ticket at https://github.com/AlliumCepa/webgui/issues/8.
 
 ### Installer Script
