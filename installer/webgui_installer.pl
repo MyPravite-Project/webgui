@@ -1234,11 +1234,12 @@ if( $mysqld_safe_path ) {
 
     if( $os eq 'debian' ) {
 
-        if( ! -f '/etc/mysql/my.cnf' and ! -f '/etc/my.cnf' ) {
-# XXXX doesn't seem to be working
-            update "Generating a skeletal my.cnf file for MySQL.";
-            write_my_cnf('/usr');
-        }
+# what if we *don't* do this because now the conf file says "datadir         = /var/lib/mysql" but there's no database there and it can't do 'create database' or anything else
+#        if( ! -f '/etc/mysql/my.cnf' and ! -f '/etc/my.cnf' ) {
+## XXXX doesn't seem to be working
+#            update "Generating a skeletal my.cnf file for MySQL.";
+#            write_my_cnf('/usr');
+#        }
 
         # my $codename = (split /\s+/, `lsb_release --codename`)[1] || 'squeeze';
 
@@ -1408,7 +1409,7 @@ progress(25);
 do {
     if( $os eq 'debian' ) {
 
-        run "apt-get install -y perlmagick libssl-dev libexpat1-dev git curl nginx", noprompt => 1;
+        run "apt-get install -y libgd-dev libssl-dev libexpat1-dev git curl nginx", noprompt => 1;
 
     } elsif( $os eq 'redhat' ) {
 
@@ -1553,7 +1554,7 @@ if( -x 'WebGUI/sbin/wgd' and ! system '( perl -c WebGUI/sbin/wgd 2>&1 ) > /dev/n
 
 progress(50);
 
-# Task::WebGUI
+# Task::WebGUI8
 
 do {
     update( "Installing required Perl modules..." );
@@ -1561,7 +1562,7 @@ do {
     run "$perl WebGUI/sbin/cpanm -n IO::Tty --verbose", nofatal => 1, noprompt => 1;  # this one likes to time out; what the heck uses this anyway?
     run "$perl WebGUI/sbin/cpanm -n Imager::File::PNG", nofatal => 1, noprompt => 1;  # this one isn't currently installing cleanly anywhere
     run "$perl WebGUI/sbin/cpanm -n experimental", noprompt => 1;  # heh.  testEnvironment.pl uses experimental to silence smartmatch warnings, but for older perls, it might not be installed.  bootstrap that.
-    run "$perl WebGUI/sbin/cpanm -n Task::WebGUI", noprompt => 1;
+    run "$perl WebGUI/sbin/cpanm -n Task::WebGUI8", noprompt => 1;
 };
 
 #
