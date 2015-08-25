@@ -17,7 +17,28 @@ WebGUI is a mature, feature rich Content Management System.  It's written in Per
 
 ## Installation
 
-On Mac OSX, Debian, and CentOS (CentOS support currently broken), the interactive installer script is recommended.
+Deploying a Docker Image is the easiest method
+
+The Installer Script method offers full native installs using your system package manager and system Perl, and has an interactive dialog for customizing your install.
+It is however prone to breakage as system packages get broken up and changed around, and as Perl modules break support for different versions of Perl.
+The Docker Image is built from "As Few Questions as Possible" mode of this installer script, with minor changes to the `/data/webgui.sh` startup script.
+
+The Source Install process should support any system that supports MySQL, has a semi-recent version of Perl, and is supported by the necessary system libraries (libgd, for example).
+
+### Docker Image
+
+An experimental Docker image is available on Docker Hub:
+
+    https://hub.docker.com/r/scrottie/webgui8/
+
+Please report problems and suggestions for improvements for that in the Docker ticket at https://github.com/AlliumCepa/webgui/issues/8.
+
+### Installer Script
+
+An installer script is available on Mac OSX, Debian, and CentOS (CentOS support currently broken) for native installs using the system packages and system Perl.
+It lags behind the current releases of operating system distros, and often fails due to system perl and perl module incompatabilities.
+
+To launch the installer:
 
     wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl
     perl webgui_installer.pl
@@ -32,11 +53,12 @@ Then answer the questions about site URL, installation directory, what MySQL pas
 If the installer encounters any errors, it will offer to automatically send a problem report.  Please allow it to
 do so if this happens.
 The problem report contains several autodetected values (such as operating system and machine architecture) as well as the text
-of the fatal error message.  No user identifying information is sent.  Passwords may be sent if the failed command includes a password.
+of the fatal error message.  No user identifying information is sent.  B<Passwords will be sent if the failed command includes a password.>  
+This happens in the clear and is not a desired feature.
 
 After the installer completes, a `webgui.sh` file will be left in the install directory you picked, along with the
 `WebGUI` directory containing the install.
-`webgui.sh` allows you to manually start the MySQL, nginx, and WebGUI8.
+`webgui.sh` allows you to manually start MySQL, nginx, and WebGUI8.
 
 If you have SysVInit, the installer will write startup files in `/etc/init.d/webgui8` and `/etc/rc4.d/S45webgui8`.
 It will also use those startup files to start WebGUI.
@@ -53,7 +75,7 @@ configured and started.
 
 The admin user is `Admin` and the default starting password is `123qwe`.
 
-## Manual Installation
+### Manual Installation
 
 For OSX, FreeBSD, and other systems, or for those who like to see exactly what is happening, use the manual install process.
 
