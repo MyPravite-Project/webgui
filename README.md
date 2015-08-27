@@ -47,7 +47,11 @@ Once Docker is installed, run these commands as root to start WebGUI:
 
 If not run interactively, `docker ps -l` shows the last Docker container started, `docker log <id>` shows the output (which will be the `plack` process output for WebGUI), and `docker stop <id>` stops it.
 
-See http://docker.com for instructions for Windows and Mac OSX.
+Use `docker stop <id>` to stop the container and `docker start <id>` to start it again.  `docker ps -a` shows all containers, including stopped ones.
+
+Each time `docker run` is executed, a new, distinct, persistent copy of WebGUI's database and uploads will be created.  Generally, you'll want to only one or a few containers, and then continue to re-start that same one or few.  That way, changes you've made in the CMS are persisted.
+
+See http://docker.com for more usage information, and for installation instructions for Windows and Mac OSX.
 
 Please report problems and suggestions for improvements for that in the Docker ticket at https://github.com/AlliumCepa/webgui/issues/8.
 
@@ -93,32 +97,35 @@ configured and started.
 
 The admin user is `Admin` and the default starting password is `123qwe`.
 
-### Manual Installation
+### Source Installation
 
-For OSX, FreeBSD, and other systems, or for those who like to see exactly what is happening, use the manual install process.
+Use this manual installation from source for OSX, FreeBSD, and other systems, or for those who like to see exactly what is happening.
 
-Many perl modulues require system librarys, such as libexpat1-dev on Debian; you have to figure out which system packages you need to install for your system.
+Many perl modulues require system libraries, such as `libexpat1-dev` on Debian; you have to figure out which system packages you need to install for your system.
 If you do that, please tell us what they are so we can document that for other people on the same system.
 
-For example, on Debian, the following system packages are needed:
-perlmagick libssl-dev libexpat1-dev git curl nginx build-essential  libpng-dev mysql-server mysql-client
+For example, on Debian, at least the following system packages are needed:
+`perlmagick libssl-dev libexpat1-dev git curl nginx build-essential libpng-dev mysql-server mysql-client`.
 
 This assumes that your site is "www.example.com".  If it's something else, change the commands to match.
 
 Generic source install instructions:
 
-* Load share/create.sql into your MySQL/MariaDB/Percona
-* Run ./sbin/testEnvironment.pl to install all new requirements
+* Create a database named after your site, such as `www_whatever_com`
+* Load `share/create.sql` into your MySQL/MariaDB/Percona
+* Run .`bin/testEnvironment.pl` to install all new requirements
 * Get a new wgd, the wG command line tool, from http://haarg.org/wgd
-* Copy [etc/WebGUI.conf.original](etc/WebGUI.conf.original) to etc/www.whatever.com.conf
-* Edit the conf file and set dbuser, dbpass, dsn, uploadsPath (eg to /data/domains/www.example.com/public/uploads/), extrasPath, maintenancePage and siteName
-* Copy [etc/log.conf.original](etc/log.conf.original) to etc/log.conf .
-* Edit etc/log.conf such that log4perl.appender.mainlog.filename points to a writable path.  For example: ```log4perl.appender.mainlog.filename = webgui.log``` works for local development.
-* Set WEBGUI_CONFIG to point at your new config file.  For example: ```export WEBGUI_CONFIG=www.whatever.com.conf``` .
-* Run upgrades (yes, even for brand new install):  wgd reset --upgrade
-* Copy the "extras" directory from whereever you unpacked it to whereever you pointed extrasPath to in the config file.  For example, if you unpacked the source in /data/WebGUI and the extrasPath to /data/domains/www.example.com/public/, you'd run: rsync -r -a /data/WebGUI/www/extras /data/domains/www.example.com/public/
+* Copy [etc/WebGUI.conf.original](etc/WebGUI.conf.original) to `etc/www.whatever.com.conf`
+* Edit the conf file and set `dbuser`, `dbpass`, `dsn`, `uploadsPath` (eg to `/data/domains/www.example.com/public/uploads/`), `extrasPath`, `maintenancePage`, and `siteName`
+* Copy [etc/log.conf.original](etc/log.conf.original) to `etc/log.conf`
+* Edit `etc/log.conf` such that `log4perl.appender.mainlog.filename` points to a writable path.  For example: `log4perl.appender.mainlog.filename = webgui.log` works for local development
+* Set `WEBGUI_CONFIG` to point at your new config file.  For example: `export WEBGUI_CONFIG=www.whatever.com.conf`
+* Run upgrades (yes, even for brand new install):  `wgd reset --upgrade`
+* Copy the `extras` directory from whereever you unpacked it to whereever you pointed `extrasPath` to in the config file.  For example, if you unpacked the source in `/data/WebGUI` and pointed the `extrasPath` to `/data/domains/www.example.com/public/`, you'd run: `rsync -r -a /data/WebGUI/www/extras /data/domains/www.example.com/public/`
 
 More detailed (but less well maintained) instructions are in [docs/install.txt](docs/install.txt).
+
+### WRE Install
 
 [docs/wre_install.txt](docs/wre_install.txt) (also unmaintained) has instructions for using the "WebGUI Runtime Environment" to run wG8.  This is a nearly complete 32-bit binary distribution
 of everything you need to run WebGUI 7 on Linux.  It can be updated with additional Perl modules required to run 8, but the setup/management scripts are likely non-functional.
