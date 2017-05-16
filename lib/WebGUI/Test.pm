@@ -255,6 +255,9 @@ sub clientTest (&) {
 Intercept logging request and capture them in buffer variables for testing.  Also,
 mock the isDebug flag so that debug output is always generated.
 
+This is wonky.  The callback is run immediately and passed a hash reference
+whose contents are updated in response to log events.
+
 =cut
 
 sub interceptLogging (&) {
@@ -271,6 +274,28 @@ sub interceptLogging (&) {
     $sub->($last_logged);
     return \@logged;
 }
+
+#----------------------------------------------------------------------------
+
+=head2 interceptLogging2
+
+Intercept logging request and send them to a callback, for testing.
+
+=cut
+
+sub interceptLogging2 (&) {
+    shift
+        if eval { $_[0]->isa($CLASS) };
+    my $sub = shift;
+    my @logged;
+    my $last_logged;
+    $CLASS->session->log->{'_logger'} = sub {
+        my $to_log = shift;
+        $last_logged->{$to_log->{level}} = $to_log->{message};
+        $sub->( $last_logged );
+    };
+}
+
 
 #----------------------------------------------------------------------------
 
