@@ -1,1 +1,5 @@
+.gitignore
 /*.kpf
+www/uploads
+lib/WebGUI.pm.orig
+selenium/selenium-server-standalone-2.25.0.jar
