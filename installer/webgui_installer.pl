@@ -206,7 +206,7 @@ BEGIN {
          }
          system $cmd;
        skip_update:
-         $cmd = "apt-get install -y build-essential libncurses5-dev libpng-dev libcurses-perl libcurses-widgets-perl chkconfig unzip";
+         $cmd = "apt-get install -y build-essential libncurses5-dev libpng-dev libcurses-perl libcurses-widgets-perl chkconfig unzip dialog";
 
     } elsif( $os eq 'redhat' ) {
 
