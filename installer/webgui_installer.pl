@@ -1477,14 +1477,29 @@ if( -x 'WebGUI/sbin/wgd' and ! system '( perl -c WebGUI/sbin/wgd 2>&1 ) > /dev/n
 } else {
 
     update( "Installing the wgd (WebGUI Developer) utility to use to run upgrades...", noprompt => 1, );
-    my $tries_left = 3;
-  try_wgd_again:
-    run( 'curl --insecure --location http://haarg.org/wgd -o WebGUI/sbin/wgd', nofatal => ($tries_left ? 1 : 0), noprompt => 1, ) or do {
-        update( "Installing the wgd (WebGUI Developer) utility to use to run upgrades... trying again to fetch..." );
-        $tries_left--;
-        goto try_wgd_again;
-    };
-    run "chmod ugo+x $install_dir/WebGUI/sbin/wgd", noprompt => 1;
+
+    # FatPacker's packaging apparently no longer works (Debian perl 5.22.2)
+
+    # my $tries_left = 3;
+  # try_wgd_again:
+    # run( 'curl --insecure --location http://haarg.org/wgd -o WebGUI/sbin/wgd', nofatal => ($tries_left ? 1 : 0), noprompt => 1, ) or do {
+    #     update( "Installing the wgd (WebGUI Developer) utility to use to run upgrades... trying again to fetch..." );
+    #     $tries_left--;
+    #     goto try_wgd_again;
+    # };
+    # run "chmod ugo+x $install_dir/WebGUI/sbin/wgd", noprompt => 1;
+
+    # temp OpenBSD Debian vmm workaround, where Debian can't set its clock, and make can't deal with code from the future 
+    # okay, dzil doesn't install, ever, anywhere, and is an enormous liability
+
+    # run 'cd /tmp;wget http://search.cpan.org/CPAN/authors/id/M/MI/MITHALDU/PPI-1.224.tar.gz; tar -xzvf PPI-1.224.tar.gz; find PPI-1.224 -exec touch {} \; ; cd PPI-1.224; perl Makefile.PL && make && make install', noprompt => 1;
+    # run 'cd /tmp;wget http://search.cpan.org/CPAN/authors/id/R/RJ/RJBS/Perl-PrereqScanner-1.023.tar.gz; tar -xzvf Perl-PrereqScanner-1.023.tar.gz; find Perl-PrereqScanner-1.023 -exec touch {} \; ; cd Perl-PrereqScanner-1.023; perl Makefile.PL && make && make install', noprompt => 1;
+    # # run 'cd tmp; wget https://github.com/haarg/wgdev/archive/master.zip; unzip master.zip; rm master.zip; cd wgdev-master; cpanm Dist::Zilla; cpanm `dzil authordeps`; dzil build; dzil install?`;
+
+    # bloody install wgdev
+
+    run 'cpanm Sub::Name Config::JSON Test::MockObject';  # stuff wgd needs XXX likely incomplete list
+    run 'cd /tmp;wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip; rm -rf wgdev-master; unzip wgdev.zip; find wgdev-master -exec touch {} \; ; cd wgdev-master; perl Makefile.PL && make && make install';
 
 }
 
