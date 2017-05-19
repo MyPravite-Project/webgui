@@ -540,11 +540,15 @@ sub run {
 
     my $noprompt = delete $opts{noprompt};
     my $nofatal = delete $opts{nofatal};
-    my $input = delete $opts{input};
     my $background = delete $opts{background};
-    my $nocurses = delete $opts{nocurses};
-    my $stdin = delete $opts{stdin};
-    my $password = delete $opts{password};
+    my $system = delete $opts{system};          # run the command with 'system' instead of opening a pipe; allows user interaction (if curses is turned off first)
+    my $nocurses = delete $opts{nocurses};      # write to STDOUT instead of tailing and warpping content into the output box in curses
+    my $stdin = delete $opts{stdin};            # also read from the keyboard and send that to the process being run; always enabled and option is ignored
+    my $password = delete $opts{password};      # Debian MySQL kludge; password to give to apt-get's setup script
+
+    die join ', ', keys %opts if keys %opts;
+
+    $noprompt = 1 if $verbosity < 0;  # ultra-low verbosity; only text boxes and such get shown
 
     goto normal_curses_mode if ! $nocurses;
         # we're running outside of the curses UI; do plain text stuff instead
@@ -555,9 +559,7 @@ sub run {
         local *scankey = sub { readline STDIN; };
     normal_curses_mode:
 
-    $noprompt = 1 if $verbosity < 0;  # ultra-low verbosity; only text boxes and such get shown
-
-    die join ', ', keys %opts if keys %opts;
+    # prompt for permission to run the command
 
     my $msg = $unattended ? '' : $comment->getField('VALUE');
 
@@ -574,6 +576,13 @@ sub run {
         update( $msg . "\nRunning '$cmd'." );
     }
 
+    # background it and return, if background is requested
+
+    if( $system) {
+        system $cmd;
+        return; # XXXXXXX indicate error
+    }
+
     if( $background ) {
         if( ! fork ) {
             # child process
@@ -585,112 +594,45 @@ sub run {
         }
     }
 
-    #open my $fh, '-|', "$cmd 2>&1" or bail(qq{
-    #    $msg\nRunning '$cmd'\nFailed: $!
-    #});
+    # run the command
 
     my $pid = open3( my $to_child, my $fh, my $fh_error, $cmd ) or bail(qq{
         $msg\nRunning '$cmd'\nFailed: $!
     });
-
-    $to_child->print($input) if $input; # XXX to be safe, this would have to be done in an event loop or fork
+    $to_child = *{$to_child}{IO} if ref($to_child) eq 'GLOB';  # pick the filehandle reference out of the glob if it's a glob for no real reason
 
     my $exit;
 
     my $output = '';
 
-    $to_child = *{$to_child}{IO} if ref($to_child) eq 'GLOB';  # pick the filehandle reference out of the glob if it's a glob for no real reason
-
-    my $read_bits_o = '';   for( $fh, $fh_error, *STDIN{IO} ) { next if ! $_;  vec($read_bits_o, fileno($_), 1) = 1; }
-    my $write_bits_o = '';  for( $to_child) { next if ! $_; vec($write_bits_o, fileno($_), 1) = 1; }
-    my $error_bits_o = '';  for( $fh, $fh_error, *STDIN{IO}, $to_child ) { next if ! $_;  vec($error_bits_o, fileno($_), 1) = 1; }
-
-    # warn "to_child is false" unless $to_child;
-    # warn "fh_error is false" unless $fh_error;
-
-    # my $child_is_alive = 1;
-    # $SIG{CHLD} = sub { warn "SIGCHILD!"; $child_is_alive = 0; };  # open3() does the waitpid() call so we don't have to; this gets called, but handle read errors on the child's STDOUT seems to be a more elegent way to exit the loop; otherwise the loop just gets stuck waiting for STDIN from the console.
-
-    STDIN->blocking(0);
-
   select_loop:
     while (1) {
 
-        my $read_bits = $read_bits_o;
-        my $write_bits = $write_bits_o;
-        my $error_bits = $error_bits_o;
-
-        # warn "calling select";
-        my $num_found = select $read_bits, $write_bits, $error_bits, 0.2;
-
-        # warn "fh: @{[ $fh || 'undef' ]} fh_error: @{[ $fh_error || 'undef' ]} STDIN: @{[ *STDIN{IO} || 'undef' ]} to_child: @{[ $to_child || 'undef' ]}";
-
         my $buf;
 
-        # read from readable filehandles
-        # we intentionally check STDIN last so we don't wind up blocking for console input when the child has gone away
+        my $bytes_read = sysread($fh, $buf, 1024);
 
-        for my $handle ( $fh, $fh_error, *STDIN{IO} ) {
-
-            next unless $handle;
-            vec(my $bit_for_this_handle = '', fileno($handle), 1) = 1;
-            next unless $read_bits & $bit_for_this_handle;
-
-            # next if $handle == $to_child; # I can't believe I even have to say this... IO::Select, what are you thinking?
-
-            # read data from all ready filehandles
-            # handle may == $fh or $fh_error or *STDIN
-            # $fh_error may be undef coming out of the open3() call
-            my $handle_name = $handle == $fh ? "child's STDOUT" : $fh_error && $handle == $fh_error ? "child's STDERR" : $handle == *STDIN{IO} ? "installer STDIN" : 'unknown';
-            # warn "$handle_name is readable";
-
-            my $bytes_read = sysread($handle, $buf, 1024);
-
-            if ( ! defined $bytes_read ) {
-               next if $handle_name eq 'installer STDIN';
-               # warn "[$handle_name read error]\n";
-               last select_loop if $handle_name eq "child's STDOUT";  # when we can't read the child's output any more, the child has gone away
-               next;
-            } if ($bytes_read == -1) {
-               # warn "[$handle_name closed]\n"; # debug
-               last select_loop if $handle_name eq "child's STDOUT";  # when we can't read the child's output any more, the child has gone away
-               # $sel->remove($handle);
-               next;
-            } elsif ($bytes_read == 0) {
-               # warn "[$handle_name read error]\n";
-               last select_loop if $handle_name eq "child's STDOUT";  # when we can't read the child's output any more, the child has gone away
-               next;
-            }
-
-            # process the read data; if it was read from STDIN, send it to the child; if we're in nocurses mode and we read from the child processes
-            # stdin or stdout, send it to our STDOUT straight away. 
-
-            if( $handle eq 'installer STDIN') {
-                # instead of doing this as it maybe should only in the case where the 'stdin' arg was passed, this does it all of the time
-                $to_child->print($buf);
-                $to_child->flush;
-            } elsif( $nocurses ) {
-                print($buf);
-                STDOUT->flush;
-                $buf =~ s{[^a-zA-Z0-9 ]}{}g;
-                $output .= $buf;
-            } else {
-                $output .= $buf;
-            }
+        if ( ! defined $bytes_read ) {
+           last select_loop;
+        } if ($bytes_read == -1) {
+           last select_loop;
+        } elsif ($bytes_read == 0) {
+           last select_loop;
+           next;
         }
 
-        # special case, so far just to deal with MySQL install on Debian, which fires up a curses UI and asks for a root password to use.
-        if( $password and $output =~ m/assword for the MySQL/ ) {
-            # that will match either of these:
-            # New password for the MySQL "root" user:
-            # Repeat password for the MySQL "root" user:
-            # but we have to take it out of the buffer so that we don't match on it twice
-            $output =~ s{assword for the MySQL}{...password...};
-            $to_child->print($password, "\n");
+        if( $nocurses ) {
+            STDOUT->print($buf);
+            STDOUT->flush;
+            # $buf =~ s{[^a-zA-Z0-9\n:,.? ]}{}g;  # XXX what is this for?  filter out vt100 escapes?
+            $output .= $buf;
+        } else {
+            $output .= $buf;
+            update( tail( $msg . "\n$cmd:\n$output" ) );
         }
-
-        update( tail( $msg . "\n$cmd:\n$output" ) ) if ! $nocurses;
     }
+
+    # child process no longer readable, so reset things, collect status, and return
 
     STDIN->blocking(1);
 
@@ -1245,7 +1187,8 @@ if( $mysqld_safe_path ) {
 
         update "Installing MySQL.";
 
-        my @extra_args_to_the_run_function;
+        # XXX wish we could just assign a password, esp for unattended operation
+        # $mysql_root_password ||= join('', map { $_->[int rand scalar @$_] } (['a'..'z', 'A'..'Z', '0' .. '9']) x 12);
 
         if( $verbosity >= 0 ) {
 
@@ -1256,19 +1199,12 @@ if( $mysqld_safe_path ) {
                 Installing these packages:  mysql-client mysql-server
             });
 
-            endwin(); # clear out the curses stuff temporarily so we can see the output from this one.  this apt-get install is the most likely to have trouble of the lot.
-            print "\n" x 100;
-
-        } else {
-
-            @extra_args_to_the_run_function = ( 
-                password => join('', map { $_->[int rand scalar @$_] } (['a'..'z', 'A'..'Z', '0' .. '9']) x 12), 
-                nocurses => 1,
-            );
-
         }
 
-        run "apt-get install -y --force-yes mysql-client mysql-server", nocurses => 1, stdin => 1, noprompt => 1, @extra_args_to_the_run_function;
+        endwin(); # clear out the curses stuff temporarily so we can see the output from this one.  this apt-get install is the most likely to have trouble of the lot.
+        print "\n" x 100;
+
+        run "apt-get install -y --force-yes mysql-client mysql-server", system => 1, nocurses => 1, noprompt => ( $verbosity > 0 ? 0 : 1 );
 
         init_curses();
         main_win();  update();    # redraw
