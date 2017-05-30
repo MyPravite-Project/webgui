@@ -983,7 +983,7 @@ if( $current_user eq 'root' ) {
                 }
                 if( $dialogue->getField('CURSORPOS') == 0 ) {
                   ask_what_username_to_use_for_the_new_user:
-                    $run_as_user = text('New Username', '') or goto ask_about_making_a_new_user;
+                    $run_as_user = text('New Username', 'webgui') or goto ask_about_making_a_new_user;
                     if( $run_as_user =~ m/[^a-z0-9_]/ ) {
                         update "Create a new user to run the WebGUI server process as?\nUsername must be numbers, letters, and underscore, and should be lowercase.";
                         goto ask_what_username_to_use_for_the_new_user;
