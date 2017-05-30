@@ -853,6 +853,8 @@ do {
     ($database_name = $site_name) =~ s{\W}{_}g;
 };
 
+my $config_file_name = "WebGUI/etc/$database_name.conf";
+
 #
 # /data directory
 #
@@ -1289,15 +1291,57 @@ EOF
 progress(20);
 
 #
-# create database and user
+# fetch cpanm
 #
 
-my $mysql_user_password = join('', map { $_->[int rand scalar @$_] } (['a'..'z', 'A'..'Z', '0' .. '9']) x 12);
+if( -f 'WebGUI/sbin/cpanm' and ! system '( perl -c WebGUI/sbin/cpanm 2>&1 ) > /dev/null') {
+
+    # already installed; do nothing
+    update "The cpanm utility is already installed; not re-installing";
+
+} elsif( -f '/root/cpanm.test') {
+
+    update( "Devel -- Installing the cpanm utility to use to install Perl modules from a cached copy" );
+    run "cp -a /root/cpanm.test WebGUI/sbin/cpanm", noprompt =>1;
+
+} else {
+
+    update "Installing the cpanm utility to use to install Perl modules..." ;
+    run 'curl --insecure --location http://cpanmin.us --output WebGUI/sbin/cpanm', noprompt => 1;
+    run 'chmod ugo+x WebGUI/sbin/cpanm', noprompt => 1;
+
+}
+
+#
+# read any possible previous config file
+#
+
+do {
+    run 'cpanm Config::JSON', noprompt => $verbosity > 0 ? 0 : 1;
+};
+
+do {
+    local $SIG{__DIE__};
+    eval "use Config::JSON; 1;" or bail "trying to load Config::JSON after installing it: ``$@''";
+};
+
+my $mysql_user_password;
+$config_file_name or die;
+my $config = eval { Config::JSON->new( $config_file_name ) };  # file won't exist yet on the first run, but if install was restarted, read what we previously set
+$mysql_user_password = $config->get('dbpass') if $config;
+$mysql_user_password ||= join('', map { $_->[int rand scalar @$_] } (['a'..'z', 'A'..'Z', '0' .. '9']) x 12);  # create a password if none has been set yet
+# XXX also dbuser
+
+#
+# create database and user
+#
 
 my $skip_database_load = 0;
 
 do {
     # XXX hard-coded database user name to 'webgui' for now and user has no say in what the password is
+    # XXXXXXXXXXXX use the $database_name as the database user name asd well
+
     # my $database_already_exists = run qq{mysql --password=$mysql_root_password --user=root --batch --disable-column-names -e "select count(*) from mysql.db where Db='$database_name'"}, noprompt => 1; # can't find the table that has this.  mysql.db continues to remember the user/database even after the database is dropped.  http://dev.mysql.com/doc/refman/5.0/en/tables-table.html
     my $database_already_exists_output = run qq{mysql --password=$mysql_root_password --user=root --batch --disable-column-names -e "show databases like '$database_name'"}, noprompt => 1;
     chomp $database_already_exists_output;
@@ -1437,30 +1481,6 @@ do {
 progress(40);
 
 #
-# fetch cpanm
-#
-
-if( -f 'WebGUI/sbin/cpanm' and ! system '( perl -c WebGUI/sbin/cpanm 2>&1 ) > /dev/null') {
-
-    # already installed; do nothing
-    update "The cpanm utility is already installed; not re-installing";
-
-} elsif( -f '/root/cpanm.test') {
-
-    update( "Devel -- Installing the cpanm utility to use to install Perl modules from a cached copy" );
-    run "cp -a /root/cpanm.test WebGUI/sbin/cpanm", noprompt =>1;
-
-} else {
-
-    update "Installing the cpanm utility to use to install Perl modules..." ;
-    run 'curl --insecure --location http://cpanmin.us --output WebGUI/sbin/cpanm', noprompt => 1;
-    run 'chmod ugo+x WebGUI/sbin/cpanm', noprompt => 1;
-
-}
-
-progress(45);
-
-#
 # wgd
 #
 
@@ -1547,7 +1567,6 @@ do {
 
 do {
     local $SIG{__DIE__};
-    eval "use Config::JSON; 1;" or bail "trying to load Config::JSON after installing it: ``$@''";
     eval "use Template; 1;" or bail "trying to load Template after installing it: ``$@''";
 };
 
@@ -1592,28 +1611,38 @@ if( ! $skip_database_load ) {
 
 do {
 
-    # www.whatever.com.conf
-    # XXX change this to use $site_name, not $database_name, for the filename
-
-    # largely adapted from /data/wre/sbin/wresetup.pl
-    cp 'WebGUI/etc/WebGUI.conf.original', "WebGUI/etc/$database_name.conf" or bail "Failed to copy WebGUI/etc/WebGUI.conf.original to WebGUI/etc/$database_name.conf: $!";
-    cp 'WebGUI/etc/log.conf.original', 'WebGUI/etc/log.conf' or bail "Failed to copy WebGUI/etc/log.conf.original to WebGUI/etc/log.conf: $!";
-    my $config = Config::JSON->new( "WebGUI/etc/$database_name.conf" );
-    $config->set( dbuser          => 'webgui', );
-    $config->set( dbpass          => $mysql_user_password, );
-    $config->set( dsn             => "DBI:mysql:${database_name};host=127.0.0.1;port=3306" ); # XXX faster if we use the mysql.sock?
-    $config->set( uploadsPath     => "$install_dir/domains/$site_name/public/uploads", );
-    # $config->set( extrasPath      => "$install_dir/domains/$site_name/public/extras", ); # XXX not currently copying this; make it match what we give nginx
-    $config->set( extrasPath      => "$install_dir/WebGUI/www/extras", ); # XXX not currently copying this; make it match what we give nginx
-    $config->set( maintenancePage =>  "$install_dir/WebGUI/www/maintenance.html", );
-    # XXX the searchIndexPlugins scripts that come with the WRE
+    # www_whatever_com.conf
+    # $database_name is created from $site_name, with non-alpha characters changed to _
 
     # log.conf
+
+    # largely adapted from /data/wre/sbin/wresetup.pl
+    cp 'WebGUI/etc/log.conf.original', 'WebGUI/etc/log.conf' or bail "Failed to copy WebGUI/etc/log.conf.original to WebGUI/etc/log.conf: $!";
 
     eval { 
         template(log_conf(), "$install_dir/WebGUI/etc/log.conf", { } )
     } or bail "Failed to template log.conf to $install_dir/WebGUI/etc/log.conf: $@";
 
+    # site_name.conf
+
+    if( -f $config_file_name ) {
+        update("Config file `$config_file_name' already exists.  Not overwrriting it.\nHit Enter to continue.\n");
+        scankey($mwh);
+    } else {
+        # create it
+        cp 'WebGUI/etc/WebGUI.conf.original', $config_file_name or bail "Failed to copy WebGUI/etc/WebGUI.conf.original to WebGUI/etc/$database_name.conf: $!";
+        # modify it
+        my $config = Config::JSON->new( $config_file_name );
+        $config->set( dbuser          => 'webgui', );
+        $config->set( dbpass          => $mysql_user_password, );
+        $config->set( dsn             => "DBI:mysql:${database_name};host=127.0.0.1;port=3306" ); # XXX faster if we use the mysql.sock?
+        $config->set( uploadsPath     => "$install_dir/domains/$site_name/public/uploads", );
+        # $config->set( extrasPath      => "$install_dir/domains/$site_name/public/extras", ); # XXX not currently copying this; make it match what we give nginx
+        $config->set( extrasPath      => "$install_dir/WebGUI/www/extras", ); # XXX not currently copying this; make it match what we give nginx
+        $config->set( maintenancePage =>  "$install_dir/WebGUI/www/maintenance.html", );
+    }
+
+    # XXX the searchIndexPlugins scripts that come with the WRE
 };
 
 progress(70);
