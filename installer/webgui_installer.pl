@@ -1268,11 +1268,11 @@ EOF
         update "Initializing the MySQL database.";
 
         run "chown -R $run_as_user /usr/local/var/mysql", noprompt => 1;
-        run "sudo -u $run_as_user mysql_install_db --basedir $basedir --datadir /usr/local/var/mysql", noprompt => 1;
+        run "su $run_as_user -c 'mysql_install_db --basedir $basedir --datadir /usr/local/var/mysql'", noprompt => 1;
 
         run "mkdir -p /Users/$run_as_user/Library/LaunchAgents", noprompt => 1;  # XXX this doesn't look like it will run on machine startup
         run "chown $run_as_user /Users/$run_as_user/Library/LaunchAgents", noprompt => 1;
-        run "sudo -u $run_as_user /usr/local/bin/mysqld_safe", background => 1, noprompt => 1;
+        run "su $run_as_user -c '/usr/local/bin/mysqld_safe'", background => 1, noprompt => 1; # XXX I think mysql can run as root or will su to its own user
 
     } else {
         enter(qq{
@@ -1518,8 +1518,8 @@ if( -x 'WebGUI/sbin/wgd' and ! system '( perl -c WebGUI/sbin/wgd 2>&1 ) > /dev/n
 
     # bloody install wgdev
 
-    run 'cpanm Sub::Name Config::JSON Test::MockObject';  # stuff wgd needs XXX likely incomplete list
-    run 'cd /tmp;wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip; rm -rf wgdev-master; unzip wgdev.zip; find wgdev-master -exec touch {} \; ; cd wgdev-master; perl Makefile.PL && make && make install';
+    run 'cpanm Sub::Name Test::MockObject', noprompt => $verbosity > 0 ? 0 : 1;  # stuff wgd needs XXX likely incomplete list
+    run 'cd /tmp && wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip && rm -rf wgdev-master && unzip wgdev.zip && find wgdev-master -exec touch {} \; && cd wgdev-master && perl Makefile.PL && make && make install && cp `which wgd` $install_dir/WebGUI/sbin/wgd';
 
 }
 
@@ -1833,7 +1833,7 @@ do {
     } else {
         # run upgrades as the user wG is going to run as so that log files, uploads, etc are all owned by that user
         # this is the normal case and the scenario that this installer sets up
-        run "sudo -u $run_as_user $perl $install_dir/WebGUI/sbin/wgd reset --upgrade --config-file=$database_name.conf --webgui-root=$install_dir/WebGUI", noprompt => 1;
+        run "su $run_as_user -c '$perl $install_dir/WebGUI/sbin/wgd reset --upgrade --config-file=$database_name.conf --webgui-root=$install_dir/WebGUI'", noprompt => 1;
     }
 
 
