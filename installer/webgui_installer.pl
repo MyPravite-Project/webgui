@@ -782,9 +782,9 @@ do {
 do {
     enter(qq{
         Welcome to the WebGUI8 installer utility!
-        Currently supported platforms are Debian GNU/Linux and MacOS X.
+        Currently supported platforms are Debian GNU/Linux.
+        Previously supported (please help fix/maintain support for them) are MacOS X and CentOS.
         You may press control-C at any time to exit.
-        Examine commands before they're run to make sure that they're what you want to do!
     });
 
     enter(qq{
