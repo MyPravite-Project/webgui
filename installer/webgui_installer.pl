@@ -1528,12 +1528,18 @@ progress(50);
 # Task::WebGUI8
 
 do {
+    # XXX temp workaround for my vmm not allowing the date to be set, and Net::HTTP failing to build because `make` thinks it is from the future
+    run 'cd /tmp;wget http://search.cpan.org/CPAN/authors/id/O/OA/OALDERS/Net-HTTP-6.15.tar.gz; tar -xzvf Net-HTTP-6.15.tar.gz; find Net-HTTP-6.15 -exec touch {} \; ; cd Net-HTTP-6.15; perl Makefile.PL && make && make install', noprompt => 1;
+};
+
+do {
     update( "Installing required Perl modules..." );
     # XXX should send reports when modules fail to build
-    run "$perl WebGUI/sbin/cpanm -n IO::Tty --verbose", nofatal => 1, noprompt => 1;  # this one likes to time out; what the heck uses this anyway?
+    # run "$perl WebGUI/sbin/cpanm -n IO::Tty --verbose", nofatal => 1, noprompt => 1;  # this one likes to time out; what the heck uses this anyway?
     run "$perl WebGUI/sbin/cpanm -n Imager::File::PNG", nofatal => 1, noprompt => 1;  # this one isn't currently installing cleanly anywhere
     run "$perl WebGUI/sbin/cpanm -n experimental", noprompt => 1;  # heh.  testEnvironment.pl uses experimental to silence smartmatch warnings, but for older perls, it might not be installed.  bootstrap that.
     run "$perl WebGUI/sbin/cpanm -n Task::WebGUI8", noprompt => 1;
+    run "$perl WebGUI/sbin/cpanm -n Facebook::Graph::Publish::Link", noprompt => 1;
 };
 
 #
