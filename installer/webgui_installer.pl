@@ -514,6 +514,20 @@ sub tail {
     return join "\n", @lines;
 }
 
+sub system_fail_reason {
+    # copied and modified from `perldoc -f system`
+    if ($? == -1) {
+        return "failed to execute: $!\n";
+    }
+    elsif( $? & 127) {
+        return sprintf "child died with signal %d, %s coredump\n", ($? & 127),  ($? & 128) ? 'with' : 'without';
+    elsif( $? ) {
+        return sprintf "child exited with value %d\n", $? >> 8;
+    } else {
+        return;  # system() call was non-failure / success
+    }
+}
+
 sub run {
 
     # runs shell commands; verifies command with the user; collects error messages and shows them to the user
@@ -565,7 +579,11 @@ sub run {
 
     if( $system) {
         system $cmd;
-        return; # XXXXXXX indicate error
+        if( system_fail_reason() ) {
+            bail system_fail_reason() unless $nofatal;
+            update system_fail_reason();
+            return;
+        }
     }
 
     if( $background ) {
