@@ -523,7 +523,7 @@ sub system_fail_reason {
     }
     elsif( $? & 127) {
         return sprintf "child died with signal %d, %s coredump\n", ($? & 127),  ($? & 128) ? 'with' : 'without';
-    elsif( $? ) {
+    } elsif( $? ) {
         return sprintf "child exited with value %d\n", $? >> 8;
     } else {
         return;  # system() call was non-failure / success
