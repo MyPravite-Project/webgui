@@ -197,7 +197,7 @@ BEGIN {
     my $cmd;
     if( $os eq 'debian' ) {
 
-         $nginx_etc = 'etc';
+         $nginx_etc = '/etc';
 
          $cmd = "apt-get update";
          if( ! $unattended ) {
@@ -210,14 +210,14 @@ BEGIN {
 
     } elsif( $os eq 'redhat' ) {
 
-        $nginx_etc = 'etc';
+        $nginx_etc = '/etc';
 
         # no counterpart to libcurses-perl or libcurses-widgets-perl so we have to fallback on building from the bundled tarball XXX really?
         $cmd = "yum install --assumeyes gcc make automake kernel-devel man ncurses-devel.$cpu perl-devel.$cpu sudo";
 
     } elsif( $os eq 'darwin' ) {
 
-        $nginx_etc = 'usr/local/etc';
+        $nginx_etc = '/usr/local/etc';
 
         # they have to have gcc installed already care of Xcode; we can't really do that for them since it's a GUI install process 
         # ncurses seems to be there already at least once Command Line Tools and everything else is installed; not sure where it comes from
@@ -1698,17 +1698,18 @@ do {
 
     # first, fuss about nginx.conf itself
 
-    if( ! -d "/$nginx_etc/nginx" ) {
-        update "Huh, for some reason /$nginx_etc/nginx doesn't exist.  This is probably a bad a sign.";
+    if( ! -d "$nginx_etc/nginx" ) {
+        update "Huh, for some reason $nginx_etc/nginx doesn't exist.  This is probably a bad sign.";
         mkdir "/$nginx_etc/nginx" or bail "Failed to create /$nginx_etc/nginx: $!";
     }
 
-    if( ! -f "/$nginx_etc/nginx/nginx.conf" ) {
+    if( ! -f "$nginx_etc/nginx/nginx.conf" ) {
 
         # no main config file at all; this suggests a problem
+        update "Huh, for some reason $nginx_etc/nginx/nginx.conf doesn't exist.  This is probably a bad sign.";
         # bail "Failed to find nginx.conf in ``/$nginx_etc/nginx/nginx.conf''; did nginx install okay?";
-        open my $fh, '>', "/$nginx_etc/nginx/nginx.conf" or bail "Failed to open /$nginx_etc/nginx/nginx.conf for write: $!";
-        $fh->print(<<EOF) or bail "Failed to write to /$nginx_etc/nginx/nginx.conf: $!";
+        open my $fh, '>', "$nginx_etc/nginx/nginx.conf" or bail "Failed to open $nginx_etc/nginx/nginx.conf for write: $!";
+        $fh->print(<<EOF) or bail "Failed to write to $nginx_etc/nginx/nginx.conf: $!";
 ## This skeletal nginx.conf was written by the WebGUI8 installer script because no nginx.conf was present.
 http {
         include /etc/nginx/conf.d/*.conf;
@@ -1717,9 +1718,9 @@ events {
         worker_connections 768;
 }
 EOF
-        close $fh or bail "Failed to close /$nginx_etc/nginx/nginx.conf: $!";
+        close $fh or bail "Failed to close $nginx_etc/nginx/nginx.conf: $!";
 
-    } elsif( ! grep_file qr{include .*/etc/nginx/conf.d/\*.conf}, "/$nginx_etc/nginx/nginx.conf" ) {
+    } elsif( ! grep_file qr{include .*/etc/nginx/conf.d/\*.conf}, "$nginx_etc/nginx/nginx.conf" ) {
 
         # the "include /etc/nginx/conf.d/*.conf" line was *not* found.
         # trying to append to it.
@@ -1727,8 +1728,8 @@ EOF
         # we may have to create the conf.d directory in the next step, but that's okay.
         # this scenario applies to OSX with nginx from homebrew.
 
-        update "nginx.conf apparently doesn't include conf.d/*.conf.\nAppending to the main nginx.conf to add this.\nThis probably won't work.\nDanger:  Skip this step and edit yourself manually later if you don't want this!\nPress Enter to continue or 's' to skip.\n";
         if( $verbosity >= 0 ) {
+            update "nginx.conf apparently doesn't include conf.d/*.conf.\nAppending to the main nginx.conf to add this.\nThis probably won't work.\nDanger:  Skip this step and edit yourself manually later if you don't want this!\nPress Enter to continue or 's' to skip.\n";
             my $key = scankey($mwh);
             goto skip_append if $key =~ m/s/i;
         }
@@ -1748,35 +1749,47 @@ EOF
 
     }
 
-    # step 2, generate a conf.d/webgui.conf, which does an include [% webgui_root %]/etc/*.nginx.
+    # step 2, remove default nginx config files
 
-    if( -f "/$nginx_etc/nginx/conf.d/default.conf" ) {
+    if( -f "$nginx_etc/nginx/conf.d/default.conf" ) {
         # this is needed on CentOS; is it the same on Debian?  what about nginx source install?
-        update "Remove the default, stock per-site nginx config file?  It probably interferes with running any other server.  Don't remove it if you've made changes to it and are using it!  Then instead, skip this step and edit it manually.";
-        run "rm /$nginx_etc/nginx/conf.d/default.conf";
+        if( $verbosity >= 0 ) {
+            update "Remove the default, stock $nginx_etc/nginx/conf./default.conf config file?  It probably interferes with running any other server.  Don't remove it if you've made changes to it and are using it!  Then instead, skip this step and edit it manually.";
+        }
+        run "rm $nginx_etc/nginx/conf.d/default.conf", prompt_verbosity => 0;
     }
 
-    if( -f "/$nginx_etc/nginx/conf.d/webgui8.conf" ) {
+    if( -f "$nginx_etc/nginx/sites-enabled/default" ) {
+        # this is needed on Debian
+        if( $verbosity >= 0 ) {
+            update "Remove the default, stock $nginx_etc/nginx/sites-enabled/default config file?  It probably interferes with running any other server.  Don't remove it if you've made changes to it and are using it!  Then instead, skip this step and edit it manually.";
+        }
+        run "rm $nginx_etc/nginx/sites-enabled/default", prompt_verbosity => 0;
+    }
 
-        update "There's already an /$nginx_etc/nginx/conf.d/webgui8.conf; not overwriting it (have I been here before?).\n";
+    # step 3, generate a conf.d/webgui.conf, which does an include [% webgui_root %]/etc/*.nginx.
+
+    if( -f "$nginx_etc/nginx/conf.d/webgui8.conf" ) {
+
+        update "There's already an $nginx_etc/nginx/conf.d/webgui8.conf; not overwriting it (have I been here before?).\n";
 
     } else {
 
         # add a webgui8.conf to conf.d.
 
-        if( ! -d "/$nginx_etc/nginx/conf.d" ) {
-            update "Creating an /$nginx_etc/nginx/conf.d directory.\n";
-            mkdir "/$nginx_etc/nginx/conf.d" or bail "Failed to create an /$nginx_etc/nginx/conf.d directory: ``$!''.";
+        if( ! -d "$nginx_etc/nginx/conf.d" ) {
+            # this directory exists on CentOS; is it the same on Debian?  looks like it.  but not on OSX/homebrew.  regardless, we now create it as necessary.
+            update "Creating an $nginx_etc/nginx/conf.d directory.\n";
+            mkdir "$nginx_etc/nginx/conf.d" or bail "Failed to create an $nginx_etc/nginx/conf.d directory: ``$!''.";
         }
 
         eval { 
-            # this directory exists on CentOS; is it the same on Debian?  looks like it.  but not on OSX/homebrew.  regardless, we now create it as necessary.
-            template(webgui8_nginx_conf(), "/$nginx_etc/nginx/conf.d/webgui8.conf", { } )
+            template(webgui8_nginx_conf(), "$nginx_etc/nginx/conf.d/webgui8.conf", { } )
         } or bail "Failed to template webgui8.conf to /$nginx_etc/nginx/conf.d/webgui8.conf: ``$@''.";
 
     }
 
-    # step 3, set up the nginx conf file under $install_dir for the webgui site we're setting up
+    # step 4, set up the nginx conf file under $install_dir for the webgui site we're setting up
 
     update "Setting up nginx per-site config";
 
