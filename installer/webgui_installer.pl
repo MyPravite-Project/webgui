@@ -1488,7 +1488,7 @@ progress(45);
 # wgd
 #
 
-if( -x 'WebGUI/sbin/wgd' and ! system '( perl -c WebGUI/sbin/wgd 2>&1 ) > /dev/null' ) {
+if( -x "$install_dir/WebGUI/sbin/wgd" and ! system '( perl -c $install_dir/WebGUI/sbin/wgd 2>&1 ) > /dev/null' ) {
 
     update "The wgd utility is already installed; not re-installing";
 
@@ -1522,8 +1522,9 @@ if( -x 'WebGUI/sbin/wgd' and ! system '( perl -c WebGUI/sbin/wgd 2>&1 ) > /dev/n
 
     # bloody install wgdev
 
-    run 'cd /tmp && wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip && rm -rf wgdev-master && unzip wgdev.zip && find wgdev-master -exec touch {} \; && cd wgdev-master && perl Makefile.PL && make && make install && cp `which wgd` $install_dir/WebGUI/sbin/wgd';
     run 'cpanm Sub::Name Test::MockObject';  # stuff wgd needs XXX likely incomplete list
+    run 'cd /tmp && wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip && rm -rf wgdev-master && unzip wgdev.zip && find wgdev-master -exec touch {} \; && cd wgdev-master && perl Makefile.PL && make && make install';
+    run qq{cp "`which wgd`" "$install_dir/WebGUI/sbin/wgd"};
 
 }
 
