@@ -48,40 +48,20 @@ todo:
 * need a notice() method that calls update() and does the same thing as enter() if verbosity is max; various warnings are currently given via update but there's no pause
 * need a sql() function as a wrapper around run for running instances of this:
         my $number_of_tables = run qq{mysql --password='$mysql_root_password' --user=root --batch --disable-column-names -e "select count(*) from information_schema.TABLES where TABLE_SCHEMA='$database_name'"}, noprompt => 1;
-* we need something like run() but that takes a closure instead of shell commands.
 * configuring mysql with a blank password in Debian doesn't seem to work
-* in curses installer, sudo password is echoed in plaintext and remains on screen during installation, one user reports.
 * Error messages during apt-get stomp all over screen layout, one user reports.
 * Nice to have: a log of all the user selections and computed directories, database names, options, etc., for later reference or debugging.
 * It would be nice to have a set of command-line parameters to install WebGUI in an "unattended" mode
-* This may have been mentioned before, but the installer doesn't like perlbrew.  I had to revert to system perl before the Curses UI worked, one user reports.
+* "This may have been mentioned before, but the installer doesn't like perlbrew.  I had to revert to system perl before the Curses UI worked", one user reports.
 * add instructions for starting spectre into the startup .sh we generate and check the hostname to make sure it resolves to the host (otherwise spectre won't work)
 * plebgui support
 * warn about impossiblely early date time; Curses wouldn't build
-* service startup stuff on Debian and OSX, nginx config on Debian untested
-* sudo mode hasn't been tested recently and is almost certainly broken
 * check for spaces and other things in filenames and complain about them
 * our /tmp install Curses bootstrap attempt is pathetic; should use local::lib perhaps
-* on 64 bit debian, use the 64 bit specific package names!
-* run() should take a 'requires root' flag and that should prompt the user to run things in a root terminal if not root and there's no sudo password
-* app.psgi should probably just do a 'use libs "extlib"' so that the user doesn't have to set up the local lib
-* Report on passwords created for various accounts at the end of the install
 * Does it make sense to install one system-wide plack/starman startup file?  Doesn't handle multiple installations but maybe does multiple sites on one install even though they all share logs?  Or does it make more sense to install one system startup file for each site installed?
 * setupfiles/wre.logrotate is unusused by us; do Debian and RedHat rotate mysql logs?  probably.  anyway, we probably also need to rotate the webgui.log.
 * in verbose mode, put commands up for edit in a textbox with ok and cancel buttons
-* maybe start script as a shell script then either unpack a perl script or self perl <<EOF it
-* offer help for modules that won't install
-* save/restore variables automatically since we're asking for so many things?  tough for passwords though
-* take command line arg options for the various variables we ask the user so people can run this partially or non interactively
-* ultra-low verbosity (fully automatic) mode
-* would be awesome if this could diagnose and repair common problems
-* even without using the WRE library code, look for mysql and such things in $install_root/wre and use them if there?
 * add webgui to the system startup!  I think there's something like this in the WRE
-
-notes:
-
-* $run_as_user never gets changed from eg root; need to offer to create a webgui user; thought I had logic around to do that; chown $install_dir to them so that they can write log and pid files there, and chown -R uploads to them; useradd <username> --password <whatever>
-* MEVENT is getting typedef'd to int by default in the Curses code but ncurses wants to create the type.  apparently it's a mouse event.  clearing C_GETMOUSE should get rid of the offending code, maybe.  swapping order of things seems to work, too.  include'ing ncurses.h before CursesTyp.h sets C_TYPMEVENT so that it doesn't default to define'ing it as an int.
 
 =cut
 
