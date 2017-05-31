@@ -1822,7 +1822,7 @@ EOF
 
     if( $os eq 'debian' ) {
         # Debian sets nginx to start automatically when it is installed
-        run "nginx -s reload", prompt_verbosity => 1,
+        run "nginx -s reload", prompt_verbosity => 1, nofatal => 1;  # this started giving the error "nginx: [error] invalid PID number "" in "/run/nginx.pid"".  rm'ing /var/run/nginx.pid didn't clear that up.
     } elsif( $os eq 'redhat' ) {
         run "/sbin/chkconfig nginx on", prompt_verbosity => 1;
         run "/sbin/service nginx start", prompt_verbosity => 1;
