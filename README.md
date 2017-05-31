@@ -57,7 +57,8 @@ Please report problems and suggestions for improvements for that in the Docker t
 
 ### Installer Script
 
-An installer script is available on Mac OSX, Debian, and CentOS (CentOS support currently broken) for native installs using the system packages and system Perl.
+An installer script is available on Mac OSX, Debian, and CentOS (CentOS support currently broken, OSX likely also)
+for native installs using the system packages and system Perl.
 It lags behind the current releases of operating system distros, and often fails due to system perl and perl module incompatabilities.
 
 To launch the installer:

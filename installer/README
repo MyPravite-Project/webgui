@@ -7,17 +7,20 @@ It is currently incomplete -- it doesn't set up WebGUI to run at boot
 time on Debian, and it doesn't set up log rotation, or cron to run
 wremonitor, and a few other things.
 
-To run it installer on CentOS, do this, as root:
-
-yum install wget 
-yum install perl 
-wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl --no-check-certificate
-perl webgui_installer.pl
-
 To run it installer on Debian, do this, as root:
 
 apt-get install wget
 apt-get install perl
+wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl --no-check-certificate
+perl webgui_installer.pl
+
+Have backups (at least of /etc) and use "More Questions" on existing systems to major
+package and config changes aren't made without a chance to say no.
+
+To run it installer on CentOS, do this, as root:
+
+yum install wget 
+yum install perl 
 wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl --no-check-certificate
 perl webgui_installer.pl
 
