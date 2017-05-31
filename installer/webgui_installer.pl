@@ -538,7 +538,7 @@ sub run {
     my $cmd = shift;
     my %opts = @_;
 
-    my $noprompt = delete $opts{noprompt};
+    my $noprompt = exists $opts{noprompt} ? delete $opts{noprompt} : $verbosity > 0 ? 0 : 1;
     my $nofatal = delete $opts{nofatal};
     my $background = delete $opts{background};
     my $system = delete $opts{system};          # run the command with 'system' instead of opening a pipe; allows user interaction (if curses is turned off first)
@@ -1291,6 +1291,44 @@ EOF
 progress(20);
 
 #
+# WebGUI git checkout
+#
+
+# don't abuse github so much
+# do {
+#     update("Checking out a copy of WebGUI from GitHub...");
+#     # https:// fails for me on a fresh Debian for want of CAs; use http:// or git://
+#     my $url = 'http://github.com/plainblack/webgui.git';
+#     if( -f '/root/WebGUI/.git/config' ) {
+#         $url = '/root/WebGUI';
+#         update("Debug -- doing a local checkout of WebGUI from /root/WebGUI; if this isn't what you wanted, move that aside.");
+#     }
+#     run( "git clone $url WebGUI", nofatal => 1, ) or goto pick_install_directory;
+# };
+
+do {
+    # https:// fails for me on a fresh Debian for want of CAs; use http:// or git://
+    chdir($install_dir);
+    if( -d "WebGUI" ) {
+        enter("The directory $install_dir/WebGUI already exists.\nAssuming it is a good copy and continuing on.\nIf it is not a good copy, hit control-C now, delete it, and start again.\n");
+    } else {
+        my $url = 'http://github.com/AlliumCepa/webgui/archive/master.zip';
+        # XXX would be good to run zip -t on it to make sure it isn't truncated
+        if( -f '/tmp/webgui.zip' ) {
+            enter("There is already a webgui.zip in /tmp; using that one.\n");
+        } else {
+            update("Downloading a zip of WebGUI from GitHub...");
+            run("curl --insecure --location $url --output /tmp/webgui.zip", noprompt => 1,);
+        }
+        update("Extract WebGUI from the archive...");
+        run( "unzip -o /tmp/webgui.zip", noprompt => 1, );
+        rename("webgui-master", "WebGUI") or bail "Failed to rename webgui_master to WebGUI in $install_dir: $!";
+    }
+};
+
+progress(30);
+
+#
 # fetch cpanm
 #
 
@@ -1380,7 +1418,7 @@ do {
     # don't let people say no to this; if the user is continuing an interrupted install, then we won't know what the password was randomly set to
 };
 
-progress(25);
+progress(40);
 
 #
 # other system packages we need:  imagemagck, openssl, expat, git, curl, nginx
@@ -1440,45 +1478,7 @@ EOF
 
 };
 
-progress(30);
-
-#
-# WebGUI git checkout
-#
-
-# don't abuse github so much
-# do {
-#     update("Checking out a copy of WebGUI from GitHub...");
-#     # https:// fails for me on a fresh Debian for want of CAs; use http:// or git://
-#     my $url = 'http://github.com/plainblack/webgui.git';
-#     if( -f '/root/WebGUI/.git/config' ) {
-#         $url = '/root/WebGUI';
-#         update("Debug -- doing a local checkout of WebGUI from /root/WebGUI; if this isn't what you wanted, move that aside.");
-#     }
-#     run( "git clone $url WebGUI", nofatal => 1, ) or goto pick_install_directory;
-# };
-
-do {
-    # https:// fails for me on a fresh Debian for want of CAs; use http:// or git://
-    chdir($install_dir);
-    if( -d "WebGUI" ) {
-        enter("The directory $install_dir/WebGUI already exists.\nAssuming it is a good copy and continuing on.\nIf it is not a good copy, hit control-C now, delete it, and start again.\n");
-    } else {
-        my $url = 'http://github.com/AlliumCepa/webgui/archive/master.zip';
-        # XXX would be good to run zip -t on it to make sure it isn't truncated
-        if( -f '/tmp/webgui.zip' ) {
-            enter("There is already a webgui.zip in /tmp; using that one.\n");
-        } else {
-            update("Downloading a zip of WebGUI from GitHub...");
-            run("curl --insecure --location $url --output /tmp/webgui.zip", noprompt => 1,);
-        }
-        update("Extract WebGUI from the archive...");
-        run( "unzip -o /tmp/webgui.zip", noprompt => 1, );
-        rename("webgui-master", "WebGUI") or bail "Failed to rename webgui_master to WebGUI in $install_dir: $!";
-    }
-};
-
-progress(40);
+progress(45);
 
 #
 # wgd
@@ -1518,8 +1518,8 @@ if( -x 'WebGUI/sbin/wgd' and ! system '( perl -c WebGUI/sbin/wgd 2>&1 ) > /dev/n
 
     # bloody install wgdev
 
-    run 'cpanm Sub::Name Test::MockObject', noprompt => $verbosity > 0 ? 0 : 1;  # stuff wgd needs XXX likely incomplete list
     run 'cd /tmp && wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip && rm -rf wgdev-master && unzip wgdev.zip && find wgdev-master -exec touch {} \; && cd wgdev-master && perl Makefile.PL && make && make install && cp `which wgd` $install_dir/WebGUI/sbin/wgd';
+    run 'cpanm Sub::Name Test::MockObject';  # stuff wgd needs XXX likely incomplete list
 
 }
 
