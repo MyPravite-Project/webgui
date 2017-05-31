@@ -538,7 +538,8 @@ sub run {
     my $cmd = shift;
     my %opts = @_;
 
-    my $noprompt = exists $opts{noprompt} ? delete $opts{noprompt} : $verbosity > 0 ? 0 : 1;
+    my $prompt_verbosity = delete $opts{prompt_verbosity}; # at what verbosity level we do prompt for this one, from -1..1; overrules noprompt if passed
+    my $noprompt = delete $opts{noprompt};   # commands with no likely dangerous side-effects
     my $nofatal = delete $opts{nofatal};
     my $background = delete $opts{background};
     my $system = delete $opts{system};          # run the command with 'system' instead of opening a pipe; allows user interaction (if curses is turned off first)
@@ -549,6 +550,7 @@ sub run {
     die join ', ', keys %opts if keys %opts;
 
     $noprompt = 1 if $verbosity < 0;  # ultra-low verbosity; only text boxes and such get shown
+    $noprompt = 1 if defined $prompt_verbosity and $verbosity < $prompt_verbosity;
 
     goto normal_curses_mode if ! $nocurses;
         # we're running outside of the curses UI; do plain text stuff instead
@@ -769,7 +771,7 @@ $SIG{__DIE__} = sub { bail("Fatal error: $_[0]" . Carp::longmess() ); };
 do {
     if( -d '/etc/init.d' and -x '/etc/init.d/webgui8' ) {
         update "Stopping WebGUI...";
-        run "/etc/init.d/webgui8 stop", noprompt => 1, nofatal => 1;
+        run "/etc/init.d/webgui8 stop", prompt_verbosity => 1, nofatal => 1;
     } else {
         # XXX OSX?
     }
@@ -883,7 +885,7 @@ do {
     }
     if( ! -d $install_dir ) {
         update( qq{Creating directory '$install_dir'.\n} );
-        run( "mkdir -p '$install_dir'", noprompt => 1 );
+        run( "mkdir -p '$install_dir'", prompt_verbosity => 1 );
     }
     chdir $install_dir or bail "Couldn't chdir to the install_dir $install_dir";
     # if( -d "$install_dir/WebGUI" ) {
@@ -1031,22 +1033,22 @@ if( $current_user eq 'root' ) {
             # as with everything Apple, / and . are used on different sites with no explanation about the inconsistency.
             # apparently on my particular machine, . is correct and / gives an error.  I assume that the opposite is true
             # on other machines.
-            run "dscl . -create '/Users/$run_as_user'", noprompt => 1;
+            run "dscl . -create '/Users/$run_as_user'", propert_verbosity => 1;
             # though it kind of looks like it is, this doesn't create the user's home directory; that's all directory service stuff
-            run "mkdir '/Users/$run_as_user'", noprompt => 1;
-            run "chown '$run_as_user' '/Users/$run_as_user'", noprompt => 1;
+            run "mkdir '/Users/$run_as_user'", prompt_verbosity => 1;
+            run "chown '$run_as_user' '/Users/$run_as_user'", prompt_verbosity => 1;
             # Create and set the shell property to bash.
-            run "dscl . -create '/Users/$run_as_user' UserShell /bin/bash", noprompt => 1;
+            run "dscl . -create '/Users/$run_as_user' UserShell /bin/bash", prompt_verbosity => 1;
             # Create and set the user's full name.
-            run "dscl . -create '/Users/$run_as_user' RealName 'WebGUI user'", noprompt => 1;
+            run "dscl . -create '/Users/$run_as_user' RealName 'WebGUI user'", prompt_verbosity => 1;
             # Create and set the user's ID.
-            run "dscl . -create '/Users/$run_as_user' UniqueID $userid", noprompt => 1;
+            run "dscl . -create '/Users/$run_as_user' UniqueID $userid", prompt_verbosity => 1;
             # Create and set the user's group ID property.
-            run "dscl . -create '/Users/$run_as_user' PrimaryGroupID 1000", noprompt => 1;  # XXX can this just be hard-coded to 1000?  stupid examples don't explain the constants.
+            run "dscl . -create '/Users/$run_as_user' PrimaryGroupID 1000", prompt_verbosity => 1;  # XXX can this just be hard-coded to 1000?  stupid examples don't explain the constants.
             # supposedly but not actually:  Create and set the user home directory.
-            # run "dscl . -create '/Users/$run_as_user' NFSHomeDirectory '/Local/Users/$run_as_user'", noprompt => 1; # no idea what's up with that /Local/Users path; also despite the comment taken from the URL above, this doesn't actually create a home directory inside /Users.
+            # run "dscl . -create '/Users/$run_as_user' NFSHomeDirectory '/Local/Users/$run_as_user'", prompt_verbosity => 1; # no idea what's up with that /Local/Users path; also despite the comment taken from the URL above, this doesn't actually create a home directory inside /Users.
             # Set the password.
-            run "dscl . -passwd '/Users/$run_as_user' '$new_user_password'", noprompt => 1;
+            run "dscl . -passwd '/Users/$run_as_user' '$new_user_password'", prompt_verbosity => 1;
 
         }
     
@@ -1085,7 +1087,7 @@ if( $mysqld_safe_path and ! $mysqld_path ) {
 my $mysqld_version;
 if( $mysqld_path ) {
     my $extra = '';
-    $mysqld_version = run "$mysqld_path --version", noprompt => 1;
+    $mysqld_version = run "$mysqld_path --version", prompt_verbosity => 1;
     # eg, /usr/local/libexec/mysqld  Ver 5.1.46 for pc-linux-gnu on i686 (Source distribution)
     # or mysqld  Ver 5.6.20 for osx10.7 on x86_64 (Homebrew)
     ($mysqld_version) = $mysqld_version =~ m/Ver\s+(\d+\.\d+)\./ if $mysqld_version;
@@ -1120,7 +1122,7 @@ if( $mysqld_safe_path ) {
        if( $ps !~ m/mysqld/ ) {
             bail "wait, thought we had a mysqld at this point, but we don't have a mysqld_safe_path with which to start mysqld"  unless $mysqld_safe_path;  # XXX move this check to earlier on in mysql detection
             update(qq{Starting mysqld...});
-            run $mysqld_safe_path, noprompt => 1, background => 1;  # XXX run mysql as any particular user? 
+            run $mysqld_safe_path, prompt_verbosity => 1, background => 1;  # XXX run mysql as any particular user? 
        }
     };
 
@@ -1206,7 +1208,7 @@ if( $mysqld_safe_path ) {
         endwin(); # clear out the curses stuff temporarily so we can see the output from this one.  this apt-get install is the most likely to have trouble of the lot.
         print "\n" x 100;
 
-        run "apt-get install -y --force-yes mysql-client mysql-server", system => 1, nocurses => 1, noprompt => ( $verbosity > 0 ? 0 : 1 );
+        run "apt-get install -y --force-yes mysql-client mysql-server", system => 1, nocurses => 1, prompt_verbosity => 1;
 
         init_curses();
         main_win();  update();    # redraw
@@ -1267,12 +1269,12 @@ EOF
 
         update "Initializing the MySQL database.";
 
-        run "chown -R $run_as_user /usr/local/var/mysql", noprompt => 1;
+        run "chown -R $run_as_user /usr/local/var/mysql", prompt_verbosity => 1;
         run "su $run_as_user -c 'mysql_install_db --basedir $basedir --datadir /usr/local/var/mysql'", noprompt => 1;
 
-        run "mkdir -p /Users/$run_as_user/Library/LaunchAgents", noprompt => 1;  # XXX this doesn't look like it will run on machine startup
-        run "chown $run_as_user /Users/$run_as_user/Library/LaunchAgents", noprompt => 1;
-        run "su $run_as_user -c '/usr/local/bin/mysqld_safe'", background => 1, noprompt => 1; # XXX I think mysql can run as root or will su to its own user
+        run "mkdir -p /Users/$run_as_user/Library/LaunchAgents", prompt_verbosity => 1;  # XXX this doesn't look like it will run on machine startup
+        run "chown $run_as_user /Users/$run_as_user/Library/LaunchAgents", prompt_verbosity => 1;
+        run "su $run_as_user -c '/usr/local/bin/mysqld_safe'", background => 1, prompt_verbosity => 1; # XXX I think mysql can run as root or will su to its own user
 
     } else {
         enter(qq{
@@ -1502,7 +1504,7 @@ if( -x "$install_dir/WebGUI/sbin/wgd" and ! system '( perl -c $install_dir/WebGU
 
 } else {
 
-    update( "Installing the wgd (WebGUI Developer) utility to use to run upgrades...", noprompt => 1, );
+    update"Installing the wgd (WebGUI Developer) utility to use to run upgrades...";
 
     # FatPacker's packaging apparently no longer works (Debian perl 5.22.2)
 
@@ -1524,9 +1526,9 @@ if( -x "$install_dir/WebGUI/sbin/wgd" and ! system '( perl -c $install_dir/WebGU
 
     # bloody install wgdev
 
-    run 'cpanm Sub::Name Test::MockObject';  # stuff wgd needs XXX likely incomplete list
-    run 'cd /tmp && wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip && rm -rf wgdev-master && unzip wgdev.zip && find wgdev-master -exec touch {} \; && cd wgdev-master && perl Makefile.PL && make && make install';
-    run qq{cp "`which wgd`" "$install_dir/WebGUI/sbin/wgd"};
+    run 'cpanm Sub::Name Test::MockObject', prompt_verbosity => 1;  # stuff wgd needs XXX likely incomplete list
+    run 'cd /tmp && wget https://github.com/scrottie/wgdev/archive/master.zip -O wgdev.zip && rm -rf wgdev-master && unzip wgdev.zip && find wgdev-master -exec touch {} \; && cd wgdev-master && perl Makefile.PL && make && make install', prompt_verbosity => 1;
+    run qq{cp "`which wgd`" "$install_dir/WebGUI/sbin/wgd"}, prompt_verbosity => 1;
 
 }
 
@@ -1536,17 +1538,17 @@ progress(50);
 
 do {
     # XXX temp workaround for my vmm not allowing the date to be set, and Net::HTTP failing to build because `make` thinks it is from the future
-    run 'cd /tmp;wget http://search.cpan.org/CPAN/authors/id/O/OA/OALDERS/Net-HTTP-6.15.tar.gz; tar -xzvf Net-HTTP-6.15.tar.gz; find Net-HTTP-6.15 -exec touch {} \; ; cd Net-HTTP-6.15; perl Makefile.PL && make && make install', noprompt => 1;
+    run 'cd /tmp;wget http://search.cpan.org/CPAN/authors/id/O/OA/OALDERS/Net-HTTP-6.15.tar.gz; tar -xzvf Net-HTTP-6.15.tar.gz; find Net-HTTP-6.15 -exec touch {} \; ; cd Net-HTTP-6.15; perl Makefile.PL && make && make install', prompt_verbosity => 1;
 };
 
 do {
     update( "Installing required Perl modules..." );
     # XXX should send reports when modules fail to build
     # run "$perl WebGUI/sbin/cpanm -n IO::Tty --verbose", nofatal => 1, noprompt => 1;  # this one likes to time out; what the heck uses this anyway?
-    run "$perl WebGUI/sbin/cpanm -n Imager::File::PNG", nofatal => 1, noprompt => 1;  # this one isn't currently installing cleanly anywhere
-    run "$perl WebGUI/sbin/cpanm -n experimental", noprompt => 1;  # heh.  testEnvironment.pl uses experimental to silence smartmatch warnings, but for older perls, it might not be installed.  bootstrap that.
-    run "$perl WebGUI/sbin/cpanm -n Task::WebGUI8", noprompt => 1;
-    run "$perl WebGUI/sbin/cpanm -n Facebook::Graph::Publish::Link", noprompt => 1;
+    run "$perl WebGUI/sbin/cpanm -n Imager::File::PNG", nofatal => 1, prompt_verbosity => 1;  # this one isn't currently installing cleanly anywhere
+    run "$perl WebGUI/sbin/cpanm -n experimental", prompt_verbosity => 1;  # heh.  testEnvironment.pl uses experimental to silence smartmatch warnings, but for older perls, it might not be installed.  bootstrap that.
+    run "$perl WebGUI/sbin/cpanm -n Task::WebGUI8", prompt_verbosity => 1;
+    run "$perl WebGUI/sbin/cpanm -n Facebook::Graph::Publish::Link", prompt_verbosity => 1;
 };
 
 #
@@ -1571,7 +1573,7 @@ do {
         my $nofatal = 0;
         $nofatal = 1 if $result eq 'Imager::File::PNG'; # Imager::Probe is failing sooo hard; I could spoon fed it, but it's ignoring it and coming up with garbage; oh joy... it's failing on Debian, too
         update( "Installing Perl module $result from CPAN:" );
-        run "$perl WebGUI/sbin/cpanm -n $result", noprompt => 1, nofatal => $nofatal;
+        run "$perl WebGUI/sbin/cpanm -n $result", prompt_verbosity => 1, nofatal => $nofatal;
     }
 
 };
@@ -1813,13 +1815,14 @@ EOF
     # }
 
     update "Having nginx test nginx.conf and the conf files it pulls in";
-    run "nginx -t", noprompt => 1;
+    run "nginx -t", prompt_verbosity => 1;
 
     if( $os eq 'debian' ) {
-        # XXX is nginx set to start automatically when its installed?
+        # Debian sets nginx to start automatically when it is installed
+        run "nginx -s reload", prompt_verbosity => 1,
     } elsif( $os eq 'redhat' ) {
-        run "/sbin/chkconfig nginx on", noprompt => 1 ;
-        run "/sbin/service nginx start", noprompt => 1 ;
+        run "/sbin/chkconfig nginx on", prompt_verbosity => 1;
+        run "/sbin/service nginx start", prompt_verbosity => 1;
     } elsif( $os eq 'darwin' ) {
         # XXX is nginx set to start automatically?  don't think so in this case
     }
