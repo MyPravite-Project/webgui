@@ -1365,10 +1365,14 @@ do {
 
 my $mysql_user_password;
 $config_file_name or die;
-my $config = eval { Config::JSON->new( $config_file_name ) };  # file won't exist yet on the first run, but if install was restarted, read what we previously set
-$mysql_user_password = $config->get('dbpass') if $config;
+if( -f $config_file_name ) {
+    my $config = Config::JSON->new( $config_file_name );  # file won't exist yet on the first run, but if install was restarted, read what we previously set
+    $mysql_user_password = $config->get('dbpass') if $config;
+    # XXX also dbuser
+}
 $mysql_user_password ||= join('', map { $_->[int rand scalar @$_] } (['a'..'z', 'A'..'Z', '0' .. '9']) x 12);  # create a password if none has been set yet
-# XXX also dbuser
+
+progress(35);
 
 #
 # create database and user
