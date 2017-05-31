@@ -85,7 +85,9 @@ my $perl;
 
 my $root;
 
-BEGIN { $root = $> == 0; $root or die "Non-root installations aren't supported.  Sorry.  Please look for the source install instructions or run as roon."; };
+BEGIN { $root = $> == 0; $root or die "Non-root installations aren't supported.  Sorry.  Please look for the source install instructions or run as root."; };
+
+# $ENV{LANG} = 'en_US';  # because we pattern match on the output of running commands; XXX this makes perl throw a lot of errors, even when $LANG was already en_US
 
 use Cwd;
 
