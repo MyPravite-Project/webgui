@@ -1,16 +1,19 @@
 #!/usr/local/bin/perl
 
-# to run this installer on CentOS, do:
-
-# yum install wget
-# yum install perl
-# wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl --no-check-certificate
-# perl webgui_installer.pl
-
 # to run this installer on Debian, do:
 
 # apt-get install wget
 # apt-get install perl 
+# wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl --no-check-certificate
+# perl webgui_installer.pl
+
+# Have backups (at least of /etc) and use "More Questions" on existing systems to major
+# package and config changes aren't made without a chance to say no.
+
+# to run this installer on CentOS, do:
+
+# yum install wget
+# yum install perl
 # wget https://raw.githubusercontent.com/AlliumCepa/webgui/master/installer/webgui_installer.pl --no-check-certificate
 # perl webgui_installer.pl
 
