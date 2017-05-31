@@ -1157,7 +1157,7 @@ if( $mysqld_safe_path ) {
     } );
 
     $mysql_root_password = text('MySQL Root Password', '') or goto mysql_password_again;
-    main_win();  # erase the dialogue
+    main_win();  # erase the dialogue; this doesn't seem to work but doing it again a bit further down does
     update();    # redraw after erasing the text dialogue
 
   already_have_possible_mysql_root_password:
@@ -1287,6 +1287,8 @@ EOF
     goto scan_for_mysqld;
 
 }  # end else install/setup mysql
+
+main_win();  update();    # redraw again
 
 progress(20);
 
