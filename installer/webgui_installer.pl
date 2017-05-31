@@ -1814,20 +1814,6 @@ EOF
 progress(80);
 
 #
-# miserable hack
-#
-
-# 69d207d set the version back to 8.0.0 so we don't need to do this
-# do {
-#     # fix version number to match create.sql
-#     update( qq{
-#         Working around a release problem where upgrades refuse to run because of a version mismatch.
-#     } );
-#     run( $perl . ' -p -i -e "s/8\.0\.1/8\.0\.0/g" WebGUI/lib/WebGUI.pm', noprompt => 1, );
-# };
-
-
-#
 # upgrades
 #
 
